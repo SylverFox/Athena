@@ -3,8 +3,9 @@ const monk = require('monk')
 const levenshtein = require('fast-levenshtein');
 const {log} = require('winston')
 
-const db = monk('localhost/nodetest')
-db.then(() => log('info','Connected to MongoDB')).catch(err => log('error', 'failed to connect to mongodb', err))
+const db = monk('localhost/athena')
+db.then(() => log('info','API connected to MongoDB'))
+	.catch(err => log('error', 'failed to connect to mongodb', err))
 const nodesDB = db.get('nodes')
 const cnet = db.get('campusnetindex')
 

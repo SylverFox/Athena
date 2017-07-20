@@ -1,20 +1,49 @@
+const {log, startTimer} = require('winston')
+
 const discovery = require('./discovery')
-const winston = require('winston')
+const processing = require('./processing')
 
 function IndexingTasks(config) {
-	this.config = config.discovery;
+	this.options = config;
+	this.discoverNewHosts()
 }
 
 IndexingTasks.prototype.discoverNewHosts = function() {
-	winston.log('info', 'starting new host discovery')
+	log('info', 'start: new host discovery.')
+	const timer = startTimer()
+	const startTime = Date.now()
+
+	discovery.build(this.options)
+	.then(discovery.ping)
+	.then(discovery.reverseLookup)
+	.then(discovery.listShares)
+	.then(processing.appendNewNodes)
+	.then(() => {
+		timer.done('end: new host discovery.')
+		const interval = Date.now() - startTime
+		return processing.insertNewScan('discoverNewHosts',startTime,interval)
+	})
+	.catch(err => {
+		log('warn', 'new host discovery failed.', err)
+	})
 }
 
 IndexingTasks.prototype.pingKnownHosts = function() {
-	winston.log('info', 'starting pinging hosts')
+	log('info', 'start: ping known hosts.')
+	const timer = startTimer()
+
+	// TODO
+
+	timer.done('end: ping known hosts.')
 }
 
 IndexingTasks.prototype.indexKnownHosts = function() {
-	winston.log('info', 'starting indexing known hosts')
+	log('info', 'start: index known hosts.')
+	const timer = startTimer()
+
+	// TODO
+
+	timer.done('end: index known hosts.')
 }
 
 module.exports = IndexingTasks

@@ -5,7 +5,7 @@ module.exports.init = function(config) {
 	const options = config.scheduling
 	const indexer = new IndexingTasks(config.discovery)
 
-	schedule.scheduleJob(options.discoverTime, indexer.discoverNewHosts)
-	schedule.scheduleJob(options.pingTime, indexer.pingKnownHosts)
-	schedule.scheduleJob(options.indexTime, indexer.indexKnownHosts)
+	schedule.scheduleJob(options.discoverTime, () => indexer.discoverNewHosts(options))
+	schedule.scheduleJob(options.pingTime, () => indexer.pingKnownHosts(options))
+	schedule.scheduleJob(options.indexTime, () => indexer.indexKnownHosts(options))
 }
