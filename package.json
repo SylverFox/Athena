@@ -2,6 +2,7 @@
   "name": "nodetest",
   "version": "0.1.0",
   "description": "Search engine and indexer for network shares on CampusNet",
+  "private": true,
   "main": "server.js",
   "dependencies": {
     "async": "^2.5.0",
@@ -15,7 +16,8 @@
     "monk": "^6.0.1",
     "net-ping": "^1.2.0",
     "node-schedule": "^1.2.3",
-    "send": "^0.15.3"
+    "send": "^0.15.3",
+    "winston": "^2.3.1"
   },
   "devDependencies": {},
   "scripts": {
@@ -23,5 +25,9 @@
     "start": "node server.js"
   },
   "author": "Joris Diesvelt",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SylverFox/Athena.git"
+  }
 }

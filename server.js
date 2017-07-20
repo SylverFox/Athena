@@ -1,12 +1,18 @@
 const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
+const winston = require('winston')
 
-const discovery = require('./src/discovery')
-const indexer = require('./src/indexer')
 const api = require('./src/api')
 const helper = require('./src/helper')
 const config = require('./config')
+const scheduler = require('./src/scheduler')
+
+winston.level = config.loglevel;
+winston.remove(winston.transports.Console);
+winston.add(winston.transports.Console, {colorize: true});
+winston.add(winston.transports.File, { filename: 'logs/athena'+Date.now()+'.log'});
+scheduler.init(config)
 
 /** EXPRESS **/
 
@@ -41,7 +47,7 @@ app.post('/search', (req, res) => {
 			})
 		}).catch(err => {
 			res.status(500).send('Oopsie')
-			console.log(err)
+			winston.log('warn', 'search page broke', err)
 		})
 	}
 })
@@ -59,5 +65,5 @@ app.all('/api*', (req, res) => {
 })
 
 app.listen(config.webserver.port, () => 
-	console.log(`Webserver running on http://${config.webserver.hostname}:${config.webserver.port}`)
+	winston.log('info', `Webserver running on http://${config.webserver.hostname}:${config.webserver.port}`)
 );

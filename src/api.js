@@ -1,10 +1,10 @@
 const {MongoClient} = require('mongodb')
 const monk = require('monk')
-
 const levenshtein = require('fast-levenshtein');
+const {log} = require('winston')
 
 const db = monk('localhost/nodetest')
-db.then(() => console.log('Connected to MongoDB')).catch(console.log)
+db.then(() => log('info','Connected to MongoDB')).catch(err => log('error', 'failed to connect to mongodb', err))
 const nodesDB = db.get('nodes')
 const cnet = db.get('campusnetindex')
 
@@ -28,3 +28,5 @@ exports.search = function(query, options) {
 	})
 
 }
+
+// TODO: a bunch of stuff

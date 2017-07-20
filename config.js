@@ -28,4 +28,15 @@ config.discovery = {
 	minimize: true
 }
 
+config.scheduling = {
+	// time to discover new hosts in cron format (default: daily at startup time of the server)
+	discoverTime: '0 0 * * * *',
+	// time to ping known hosts in cron format (default: every 5 minutes)
+	pingTime: '*/5 * * * *',
+	// time to index known hosts in cron format (default: daily at midnight)
+	indexTime: '0 0 * * * *'
+}
+
+config.loglevel = 'debug'
+
 module.exports = config;
