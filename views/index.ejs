@@ -1,0 +1,22 @@
+<%- include partials/head %>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+<script>
+particlesJS.load('particles-js', 'particlesjs-config.json')
+</script>
+</head>
+<body>
+
+<div id="particles-js"></div>
+
+<main class="frontpage">
+	<div class="title-bar">
+		<h1>Athena</h1>
+		<form action="/search" method="post" id="searchform">
+			<input type="text" class="form-control" name="search" autocomplete="off" id="search" value="<% if(locals.query) {%><%= query %><%}%>" placeholder="search athena">
+		</form>
+	</div>
+</main>
+
+<%- include partials/footer %>
+</body>
+</html>

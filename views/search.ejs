@@ -1,0 +1,37 @@
+<% include partials/head %>
+</head>
+<body>
+<% include partials/header %>
+<main>
+<div>
+<form action="/search" method="post" id="searchbar">
+	<div class="input-group igflex">
+		<input type="text" class="form-control" name="search" autocomplete="off" id="search" value="<% if(locals.query) {%><%= query %><%}%>">
+		<span class="input-group-btn">
+			<button type="submit" class="btn btn-secondary">
+				<span class="glyphicon glyphicon-search"></span>
+			</button>
+		</span>
+	</div>
+</form>
+</div>
+<% if(searchresults.length === 0) { %>
+<h3>No results :(</h3>
+<% } else { %>
+<div class="resultcontainer">
+<ul class="searchresults">
+<% searchresults.forEach(res => { %>
+<li class="searchresult"><a href="smb:<%= res.path %>/<%= res.filename %>"><%= res.filename %></a>
+<span> - <%= helper.bytesToSize(res.size) %></span>
+<br>
+<%= res.path %>
+
+</li>
+<% }) %>
+</ul>
+<% } %>
+</div>
+</main>
+<% include partials/footer %>
+</body>
+</html>
