@@ -4,8 +4,8 @@ const discovery = require('./discovery')
 const processing = require('./processing')
 
 function IndexingTasks(config) {
-	this.options = config;
-	this.discoverNewHosts()
+	this.options = config
+	this.indexKnownHosts()
 }
 
 IndexingTasks.prototype.discoverNewHosts = function() {
@@ -23,27 +23,43 @@ IndexingTasks.prototype.discoverNewHosts = function() {
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('discoverNewHosts',startTime,interval)
 	})
-	.catch(err => {
-		log('warn', 'new host discovery failed.', err)
-	})
+	.catch(err => log('warn', 'new host discovery failed.', err))
 }
 
 IndexingTasks.prototype.pingKnownHosts = function() {
 	log('info', 'start: ping known hosts.')
 	const timer = startTimer()
+	const startTime = Date.now()
 
-	// TODO
-
-	timer.done('end: ping known hosts.')
+	processing.getNodeIPList({nodes: null, options: this.options})
+	.then(discovery.ping)
+	.then(processing.updateOnlineStatus)
+	.then(() => {
+		timer.done('end: ping known hosts')
+		const interval = Date.now() - startTime
+		return processing.insertNewScan('pingKnownHosts',startTime,interval)
+	})
+	.catch(err => log('warn', 'pinging known hosts failed.', err))
 }
 
 IndexingTasks.prototype.indexKnownHosts = function() {
 	log('info', 'start: index known hosts.')
 	const timer = startTimer()
+	const startTime = Date.now()
 
-	// TODO
-
-	timer.done('end: index known hosts.')
+	processing.getNodeShareList().each((node, {close, pause, resume}) => {
+		pause()
+		discovery.indexHost(node).then(result => {
+			node.tree = result
+			processing.updateNodeTree(node).then(resume)
+		})
+	}).then(() => {
+		timer.done('end: index known hosts.')
+		const interval = Date.now() - startTime
+		return processing.insertNewScan('indexKnownHosts',startTime,interval)
+	}).then(processing.buildFileIndex)
+	.then(processing.buildKeywordIndex)
+	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 
 module.exports = IndexingTasks

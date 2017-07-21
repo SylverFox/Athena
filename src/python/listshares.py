@@ -9,9 +9,9 @@ except IndexError:
 	print 'no target given'
 	sys.exit(1)
 
-conn = SMBConnection('guest@'+target, '', '', target)
+conn = SMBConnection('guest@'+target, '', 'Athena', target, '', True, 2, True)
 try:
-	conn.connect(target, 139)
+	conn.connect(target, 445)
 except:
 	# target refused connection
 	print 'target refused connection'

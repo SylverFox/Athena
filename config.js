@@ -10,18 +10,17 @@ config.webserver = {
 	port: 8000
 }
 
-config.database = {
-	// database server hostname
-	hostname: 'localhost',
-	// database port
-	port: 27017
-}
-
 config.discovery = {
 	// ip range to scan for shares
 	range: '130.89.160.0/19',
-	// maximum number of network threads
-	threads: 300,
+	// maximum number of network threads for each of the discovery threads
+	// increasing the number of threads increases discovery speed, but can cause
+	// uknown problems, use with care
+	threads: {
+		ping: 500,
+		reverselookup: 500,
+		listshares: 50
+	},
 	// minimize number of hosts when discovering
 	// setting this to true will drop every server from the output when it does
 	// not respond to ping or smb packets
@@ -29,12 +28,12 @@ config.discovery = {
 }
 
 config.scheduling = {
-	// time to discover new hosts in cron format (default: daily at startup time of the server)
-	discoverTime: '0 0 * * * *',
+	// time to discover new hosts in cron format (default: daily at midnight)
+	discoverTime: '0 0 * * *',
 	// time to ping known hosts in cron format (default: every 5 minutes)
 	pingTime: '*/5 * * * *',
-	// time to index known hosts in cron format (default: daily at midnight)
-	indexTime: '0 0 * * * *'
+	// time to index known hosts in cron format (default: daily at 1 am)
+	indexTime: '0 1 * * *'
 }
 
 config.loglevel = 'debug'

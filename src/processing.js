@@ -12,12 +12,11 @@ const scansDB = db.get('scans')
 const keywdDB = db.get('keywords')
 
 exports.insertNewScan = function(task, start, runtime) {
-	const doc = {
+	return scansDB.insert({
 		task: task,
 		starttime: start,
 		runtime: runtime
-	}
-	return scansDB.insert(doc)
+	})
 }
 
 exports.appendNewNodes = function({nodes, options}) {
@@ -36,4 +35,52 @@ exports.appendNewNodes = function({nodes, options}) {
 			}).catch(reject)
 		})
 	})
+}
+
+exports.getNodeIPList = function({nodes, options}) {
+	return new Promise((resolve, reject) => {
+		nodesDB.find({}, 'ip -_id').then(docs => {
+			resolve({nodes: docs, options: options})
+		}).catch(reject)
+	})
+}
+
+exports.updateOnlineStatus = function({nodes, options}) {
+	return new Promise((resolve, reject) => {
+		nodes.forEach((node, index) => {
+			nodesDB.update({ip: node.ip}, {$set:node})
+			.then(() => {
+				if(index === nodes.length-1)
+					resolve()
+			}).catch(reject)
+		})
+	})
+}
+
+exports.getNodeShareList = function() {
+	return nodesDB.find({}, '-_id ip hostname shares')
+}
+
+exports.updateNodeTree = function(node) {
+	return nodesDB.update({ip: node.ip}, {$set:{tree: node.tree}})
+}
+
+exports.buildFileindex = function() {
+	log('debug', 'building file index')
+
+	// TODO
+
+	return new Promise((resolve, reject) => {
+		resolve()
+	})
+}
+
+exports.buildKeywordIndex = function() {
+	log('debug', 'building keyword index')
+
+	// TODO
+
+	return new Promise((resolve, reject) => {
+		resolve()
+	}
 }
