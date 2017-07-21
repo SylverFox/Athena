@@ -2,6 +2,9 @@ const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
 const winston = require('winston')
+const {MongoClient} = require('mongodb')
+const monk = require('monk')
+const responseTime = require('response-time')
 
 const api = require('./src/api')
 const helper = require('./src/helper')
@@ -11,7 +14,12 @@ const scheduler = require('./src/scheduler')
 winston.level = config.loglevel;
 winston.remove(winston.transports.Console);
 winston.add(winston.transports.Console, {colorize: true});
-winston.add(winston.transports.File, { filename: 'logs/athena'+Date.now()+'.log'});
+winston.add(winston.transports.File, {filename: 'logs/athena'+Date.now()+'.log'});
+
+const db = monk('localhost/athena')
+db.then(() => winston.log('info','connected to MongoDB'))
+db.catch(err => winston.log('error', 'failed to connect to mongodb', err))
+
 scheduler.init(config)
 
 /** EXPRESS **/
@@ -21,6 +29,7 @@ app.set('view engine', 'ejs');
 app.use(express.static('public'))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true})) 
+app.use(responseTime())
 
 
 app.all('/*', (req, res, next) => {

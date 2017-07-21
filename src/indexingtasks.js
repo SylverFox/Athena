@@ -5,7 +5,7 @@ const processing = require('./processing')
 
 function IndexingTasks(config) {
 	this.options = config
-	this.indexKnownHosts()
+	processing.buildKeywordIndex()
 }
 
 IndexingTasks.prototype.discoverNewHosts = function() {
