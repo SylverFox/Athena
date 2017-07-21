@@ -7,6 +7,8 @@
 - FTP indexing -> npm install --save ftp
 - log all api queries
 - script to detect url handler
+- caching
+- group python scripts in bulk
 
 - web:
 	favicon

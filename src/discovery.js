@@ -17,6 +17,10 @@ exports.build = function(options) {
 		}
 
 		options.threads = options.threads || {}
+		if(!options.threads.network)
+			log('info', 'no network threads specified')
+		if(!options.threads.script)
+			log('info', 'no script threads specified')
 		options.minimize = options.minimize || true
 		
 		const nodes = iprange(options.range).map(ip => ({ip: ip}))
@@ -41,7 +45,7 @@ exports.ping = function({nodes, options}) {
 
 	return new Promise((resolve, reject) => {
 		let queue = async.queue((target, callback) => wrapPingHost(target, callback),
-			options.threads.ping || 10)
+			options.threads.network || 10)
 
 		queue.drain = () => {
 			session.close()
@@ -58,7 +62,6 @@ exports.ping = function({nodes, options}) {
 					node.online = false
 				} else {
 					node.online = true
-					node.lastseen = Date.now()
 				}
 			})
 		}
@@ -69,7 +72,7 @@ exports.ping = function({nodes, options}) {
 exports.reverseLookup = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
 		let queue = async.queue((target, callback) => dns.reverse(target, callback), 
-			options.threads.reverselookup || 10)
+			options.threads.network || 10)
 
 		queue.drain = () => {
 			if(options.minimize)
@@ -90,84 +93,90 @@ exports.reverseLookup = function({nodes, options}) {
 // lists node smb shares
 exports.listShares = function({nodes, options}) {
 	function listSharesFromTarget(target, callback) {
-		let proc = spawn('python', ['src/python/listshares.py', target])
-		proc.stderr.pipe(proc.stdout)
-
-		let output = ''
-		proc.stdout.on('data', data => output += data.toString())
-
-		proc.on('exit', code => {
-			if(code > 0) callback(new Error('python script "listshares.py" exited with code: '+code), output) // most likely no shares
-			else callback(null, JSON.parse(output))
-		})
+		runPythonGetJSON(['src/python/listshares.py', target])
+		.then(output => callback(null, output))
+		.catch(callback)
 	}
 
 	return new Promise((resolve, reject) => {
-		let queue = async.queue(listSharesFromTarget, options.threads.listshares || 10)
+		let queue = async.queue(listSharesFromTarget, options.threads.script || 10)
 
 		queue.drain = () => {
 			if(options.minimize)
-				nodes = nodes.filter(node => node.shares)
+				nodes = nodes.filter(node => node.shares && node.shares.length)
 			resolve({nodes: nodes, options: options})
 			log('debug', `listing shares finished. ${nodes.length} nodes left`)
 		}
 
 		for(let node of nodes) {
 			queue.push(node.hostname, (err, shares) => {
-				if(err || shares.length === 0) node.shares = null
-				else node.shares = shares
+				if(!err) node.shares = shares
 			})
 		}
 	})
 }
 
 // indexes and populates a tree for a given target
-// TODO needs recode
-exports.indexHost = function(target) {
-	return new Promise((resolve, reject) => {
-		if(!target.shares || !target.shares.length) {
-			reject('no shares for target')
-			return
-		}
+exports.indexHosts = function({nodes, options}, datacallback) {
+	function listPathOnTarget({target, share, path}, callback) {
+		runPythonGetJSON(['src/python/listpath.py', target, share, path])
+		.then(output => callback(null, {path: path, listing: output}))
+		.catch(callback)
+	}
 
-		log('debug','indexing '+target.hostname)
-
-		let totalTree = []
-
-		target.shares.forEach((share, index) => {
-			let proc = spawn('python',['src/python/sharetree.py',target.hostname,share])
-			proc.stderr.pipe(proc.stdout)
-
-			let output = ''
-			proc.stdout.on('data', data => {
-				output += data.toString()
-			})
-
-			proc.on('exit', code => {
-				if(code > 0) log('debug','something went wrong, most likely the share was not accessible', output)
-				else {
-					const parsedOutput = JSON.parse(output)
-
-					//log('debug',parsedOutput)
-					if(parsedOutput.length)
-						totalSize = parsedOutput.map(x => x.size).reduce((sum, val) => sum+val)
-					else
-						totalSize = 0
-					log('debug',`indexed share "${share}" on host "${target.hostname}", total size : ${totalSize} bytes`)
-
-					let thisShare = {
-						directory: true,
-						size: totalSize,
-						filename: share,
-						children: parsedOutput
+	function traverseShare(queue, node, share, path) {
+		queue.push({target: node.hostname, share: share, path: path}, (err, {path, listing}) => {
+			if(!err) {
+				for(let file of listing) {
+					if(file.directory) {
+						// directroy, add new path to queue
+						traverseShare(queue, node, share, path + file.filename + '/')
+					} else {
+						// file, push back
+						datacallback({node: node, share: share, path: path, file: file})
 					}
-					totalTree.push(thisShare)
 				}
-
-				if(index === target.shares.length - 1)
-						resolve(totalTree)
-			})
+			}
 		})
+	}
 
+	return new Promise((resolve, reject) => {
+		let queue = async.queue(listPathOnTarget, options.threads.script || 10)
+
+		queue.drain = () => resolve()
+
+		for(let node of nodes) {
+			log('debug','indexing '+node.hostname)
+
+			if(!node.shares || !node.shares.length) {
+				continue
+			}
+
+			for(let share of node.shares) {
+				// start traversing the share, start at root
+				traverseShare(queue, node, share, '/')
+			}
+		}
+	})
+}
+
+function runPythonGetJSON(arguments, bulk) {
+	return new Promise((resolve, reject) => {
+		//log('debug', 'running python ', arguments)
+		let proc = spawn('python', arguments)
+		proc.stderr.pipe(proc.stdout)
+
+		let output = ''
+		proc.stdout.on('data', data => output += data.toString())
+
+		proc.on('exit', code => {
+			if(code > 0) {
+				log('debug', `python ${arguments.join(' ')} -> exit code ${code} -> output: `, output)
+				reject(new Error('Python script crashed'))
+			} else {
+				const parsedOutput = JSON.parse(output)
+				resolve(parsedOutput)
+			}
+		})
 	})
 }

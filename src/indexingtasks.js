@@ -5,7 +5,7 @@ const processing = require('./processing')
 
 function IndexingTasks(config) {
 	this.options = config
-	processing.buildKeywordIndex()
+	processing.verifyExistingCollections()
 }
 
 IndexingTasks.prototype.discoverNewHosts = function() {
@@ -47,20 +47,20 @@ IndexingTasks.prototype.indexKnownHosts = function() {
 	const timer = startTimer()
 	const startTime = Date.now()
 
-	processing.getNodeShareList().each((node, {close, pause, resume}) => {
-		pause()
-		discovery.indexHost(node).then(result => {
-			node.tree = result
-			processing.updateNodeTree(node).then(resume)
-		}).catch(err => {
-			log('warn', 'indexing of host '+node.hostname+' failed.', err)
-		})
-	}).then(() => {
+	let updates = []
+
+	processing.getNodeShareList({nodes: null, options: this.options})
+	.then(res => discovery.indexHosts(res, (data) => {
+		updates.push(processing.insertNewPath(data))
+	}))
+	.then(Promise.all(updates))
+	.then(() => {
 		timer.done('end: index known hosts.')
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('indexKnownHosts',startTime,interval)
-	}).then(processing.buildFileIndex)
-	.then(processing.buildKeywordIndex)
+	})
+	//.then(processing.buildFileIndex)
+	//.then(processing.buildKeywordIndex
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 

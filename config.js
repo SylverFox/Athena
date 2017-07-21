@@ -13,13 +13,12 @@ config.webserver = {
 config.discovery = {
 	// ip range to scan for shares
 	range: '130.89.160.0/19',
-	// maximum number of network threads for each of the discovery threads
+	// maximum number of threads for each of the discovery tasks
 	// increasing the number of threads increases discovery speed, but can cause
-	// uknown problems, use with care
+	// problems, use with care
 	threads: {
-		ping: 500,
-		reverselookup: 500,
-		listshares: 50
+		network: 500, // threads that use network connection
+		script: 50, // threads that run an external script
 	},
 	// minimize number of hosts when discovering
 	// setting this to true will drop every server from the output when it does
