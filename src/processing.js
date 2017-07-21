@@ -82,5 +82,5 @@ exports.buildKeywordIndex = function() {
 
 	return new Promise((resolve, reject) => {
 		resolve()
-	}
+	})
 }

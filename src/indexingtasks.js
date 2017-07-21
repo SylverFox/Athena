@@ -52,6 +52,8 @@ IndexingTasks.prototype.indexKnownHosts = function() {
 		discovery.indexHost(node).then(result => {
 			node.tree = result
 			processing.updateNodeTree(node).then(resume)
+		}).catch(err => {
+			log('warn', 'indexing of host '+node.hostname+' failed.', err)
 		})
 	}).then(() => {
 		timer.done('end: index known hosts.')

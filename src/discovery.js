@@ -125,8 +125,9 @@ exports.listShares = function({nodes, options}) {
 // TODO needs recode
 exports.indexHost = function(target) {
 	return new Promise((resolve, reject) => {
-		if(!target.shares || target.shares.length == 0) {
+		if(!target.shares || !target.shares.length) {
 			reject('no shares for target')
+			return
 		}
 
 		log('debug','indexing '+target.hostname)
@@ -143,7 +144,7 @@ exports.indexHost = function(target) {
 			})
 
 			proc.on('exit', code => {
-				if(code > 0) log('debug','something went wrong, most likely the share was not accessible')
+				if(code > 0) log('debug','something went wrong, most likely the share was not accessible', output)
 				else {
 					const parsedOutput = JSON.parse(output)
 
@@ -161,9 +162,10 @@ exports.indexHost = function(target) {
 						children: parsedOutput
 					}
 					totalTree.push(thisShare)
-					if(index === target.shares.length - 1)
-						resolve(totalTree)
 				}
+
+				if(index === target.shares.length - 1)
+						resolve(totalTree)
 			})
 		})
 
