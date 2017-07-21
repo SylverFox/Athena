@@ -1,0 +1,16 @@
+- use a global threader
+- pure javascript implementation
+- move variables to config
+- JSON API
+- production env
+- custom error pages
+- FTP indexing -> npm install --save ftp
+- log all api queries
+- script to detect url handler
+
+- web:
+	favicon
+	stats page
+	about page
+	api page
+	google analytics
