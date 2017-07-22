@@ -8,12 +8,14 @@ const nodesDB = db.get('nodes')
 const indexDB = db.get('campusnetindex')
 const scansDB = db.get('scans')
 const keywdDB = db.get('keywords')
+const filesDB = db.get('files')
 
 exports.verifyExistingCollections = function() {
 	db.create('nodes')
 	db.create('campusnetindex')
 	db.create('scans')
 	db.create('keywords')
+	db.create('files')
 }
 
 exports.insertNewScan = function(task, start, runtime) {
@@ -32,8 +34,8 @@ exports.appendNewNodes = function({nodes, options}) {
 				nodesDB.update(
 					{ip: node.ip},
 					{
-						$set:node,
-						$setOnInsert:{firstseen:Date.now(), seen:[Date.now()], lastseen:Date.now()}
+						$set: node,
+						$setOnInsert: {firstseen:Date.now(), seen:[Date.now()], lastseen:Date.now()}
 					},
 					{upsert: true}
 				)
@@ -78,7 +80,7 @@ exports.updateOnlineStatus = function({nodes, options}) {
 exports.getNodeShareList = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
 		//nodesDB.find({}, '-_id ip hostname shares')
-		nodesDB.find({online: true}, {fields: {_id: 0, ip: 1, hostname: 1, shares: 1}, limit:1, skip:0})
+		nodesDB.find({online: true}, {fields: {_id: 0, ip: 1, hostname: 1, shares: 1}, limit:1, skip:0}) // TODO remove hack
 		.then(docs => resolve({nodes: docs, options: options}))
 		.catch(reject)
 	})
@@ -88,12 +90,15 @@ exports.insertNewPath = function({node, share, path, file}) {
 	const fileToInsert = {
 		filename: file.filename,
 		size: file.size,
-		path: '//' + node.hostname + '/' + share + path
+		path: '//' + node.hostname + '/' + share + '/' + path,
+		lastseen: Date.now()
 	}
 
-	return nodesDB.update({ip: node.ip}, {$addToSet:{
-		files: fileToInsert
-	}})
+	return filesDB.update(
+		{filename: file.filename, size: file.size, path: path},
+		{$set: fileToInsert}, 
+		{upsert: true}
+	)
 }
 
 exports.buildFileIndex = function() {

@@ -9,6 +9,7 @@
 - script to detect url handler
 - caching
 - group python scripts in bulk
+- automatically get subnet to scan
 
 - web:
 	favicon

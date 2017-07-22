@@ -5,6 +5,8 @@ const {spawn} = require("child_process")
 const iprange = require('iprange')
 const {log} = require('winston')
 
+const smbparser = require('./smb/smbparser')
+
 // prepares objects for the discovery pipeline based on the options given
 exports.build = function(options) {
 	return new Promise((resolve, reject) => {
@@ -92,71 +94,72 @@ exports.reverseLookup = function({nodes, options}) {
 
 // lists node smb shares
 exports.listShares = function({nodes, options}) {
-	function listSharesFromTarget(target, callback) {
-		runPythonGetJSON(['src/python/listshares.py', target])
-		.then(output => callback(null, output))
-		.catch(callback)
-	}
-
 	return new Promise((resolve, reject) => {
-		let queue = async.queue(listSharesFromTarget, options.threads.script || 10)
+		const shCount = options.threads.script || 10
+		let found = 0
 
-		queue.drain = () => {
-			if(options.minimize)
-				nodes = nodes.filter(node => node.shares && node.shares.length)
-			resolve({nodes: nodes, options: options})
-			log('debug', `listing shares finished. ${nodes.length} nodes left`)
-		}
-
-		for(let node of nodes) {
-			queue.push(node.hostname, (err, shares) => {
-				if(!err) node.shares = shares
+		// create an array of shells
+		let shells = []
+		for(let i = 0; i < shCount; i++) {
+			shells.push(new PythonShell('src/python/listshares_interactive.py'))
+			shells[i].on('message', msg => {
+				const result = JSON.parse(msg)
+				nodes.find(x => x.hostname === result.hostname).shares = result.shares
+				
+				if(++found === nodes.length) {
+					resolve({nodes: nodes, options: options})
+				}
 			})
 		}
+
+		// divide tasks over shells
+		for(let n = 0; n < nodes.length; n++) {
+			shells[n%shCount].send(nodes[n].hostname)
+		}
+
+		// close all shells
+		shells.forEach(shell => shell.end())
 	})
 }
 
-// indexes and populates a tree for a given target
 exports.indexHosts = function({nodes, options}, datacallback) {
-	function listPathOnTarget({target, share, path}, callback) {
-		runPythonGetJSON(['src/python/listpath.py', target, share, path])
-		.then(output => callback(null, {path: path, listing: output}))
-		.catch(callback)
-	}
-
-	function traverseShare(queue, node, share, path) {
-		queue.push({target: node.hostname, share: share, path: path}, (err, {path, listing}) => {
-			if(!err) {
-				for(let file of listing) {
-					if(file.directory) {
-						// directroy, add new path to queue
-						traverseShare(queue, node, share, path + file.filename + '/')
-					} else {
-						// file, push back
-						datacallback({node: node, share: share, path: path, file: file})
-					}
-				}
-			}
-		})
-	}
-
 	return new Promise((resolve, reject) => {
-		let queue = async.queue(listPathOnTarget, options.threads.script || 10)
+		function listPathOnTarget({smb2session, path, jobdata}, callback) {
+			smb2session.listPath(path).then(res => callback(null, res, jobdata)).catch(callback)
+		}
+
+		function handleResult(err, res, jobdata) {
+			if(!err) {
+				res.forEach(file => {
+					if(file.directory) {
+						// add directory to queue
+						queue.push({
+							smb2session: this.data.smb2session,
+							path: this.data.path + file.filename + '\\',
+							jobdata: jobdata
+						}, handleResult)
+					} else {
+						// replace backslashes with forward slashes and strip last slash
+						path = this.data.path.replace(/\\/g, '/').slice(0, -1)
+						datacallback({node: jobdata.node, share: jobdata.share, path: path, file: file})
+					}
+				})
+			} else if(!smbparser.commonerrors.includes(err.code))
+				log('debug', 'encountered uncommon error: ',err.code)
+		}
+	
+		let queue = async.queue(listPathOnTarget, options.threads.network || 10)
 
 		queue.drain = () => resolve()
 
-		for(let node of nodes) {
-			log('debug','indexing '+node.hostname)
-
-			if(!node.shares || !node.shares.length) {
-				continue
-			}
-
-			for(let share of node.shares) {
-				// start traversing the share, start at root
-				traverseShare(queue, node, share, '/')
-			}
-		}
+		nodes.forEach(n => n.shares.forEach(s => {
+			const session = smbparser.session(n.ip, s)
+			queue.push({
+				smb2session: session,
+				path: '',
+				jobdata: {node: n, share: s}
+			}, handleResult)
+		}))
 	})
 }
 
