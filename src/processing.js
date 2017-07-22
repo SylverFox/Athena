@@ -79,26 +79,25 @@ exports.updateOnlineStatus = function({nodes, options}) {
 
 exports.getNodeShareList = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
-		//nodesDB.find({}, '-_id ip hostname shares')
-		nodesDB.find({online: true}, {fields: {_id: 0, ip: 1, hostname: 1, shares: 1}, limit:1, skip:0}) // TODO remove hack
+		nodesDB.find({online: true}, '-_id ip hostname shares')
+		//nodesDB.find({online: true, hostname: 'cobrahuis'}, '-_id ip hostname shares')
 		.then(docs => resolve({nodes: docs, options: options}))
 		.catch(reject)
 	})
+}
+
+exports.emptyFilesCache = function() {
+	return filesDB.remove({})
 }
 
 exports.insertNewPath = function({node, share, path, file}) {
 	const fileToInsert = {
 		filename: file.filename,
 		size: file.size,
-		path: '//' + node.hostname + '/' + share + '/' + path,
-		lastseen: Date.now()
+		path: '//' + node.hostname + '/' + share + '/' + path
 	}
 
-	return filesDB.update(
-		{filename: file.filename, size: file.size, path: path},
-		{$set: fileToInsert}, 
-		{upsert: true}
-	)
+	return filesDB.insert(fileToInsert)
 }
 
 exports.buildFileIndex = function() {

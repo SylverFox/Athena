@@ -49,7 +49,8 @@ IndexingTasks.prototype.indexKnownHosts = function() {
 
 	let updates = []
 
-	processing.getNodeShareList({nodes: null, options: this.options})
+	processing.emptyFilesCache()
+	.then(() => processing.getNodeShareList({nodes: null, options: this.options}))
 	.then(res => discovery.indexHosts(res, (data) => {
 		updates.push(processing.insertNewPath(data))
 	}))
