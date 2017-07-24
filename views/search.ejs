@@ -21,10 +21,10 @@
 <div class="resultcontainer">
 <ul class="searchresults">
 <% searchresults.forEach(res => { %>
-<li class="searchresult"><a href="smb:<%= res.path %>/<%= res.filename %>"><%= res.filename %></a>
+<li class="searchresult"><a href="smb:<%= res.paths[0] %>/<%= res.filename %>"><%= res.filename %></a>
 <span> - <%= helper.bytesToSize(res.size) %></span>
 <br>
-<%= res.path %>
+<%= res.paths[0] %>
 
 </li>
 <% }) %>

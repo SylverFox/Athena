@@ -17,8 +17,8 @@ config.discovery = {
 	// increasing the number of threads increases discovery speed, but can cause
 	// problems, use with care
 	threads: {
-		network: 500, // threads that use network connection
-		script: 50, // threads that run an external script
+		network: 100, // threads that use network connection
+		script: 10, // threads that run an external script
 	},
 	// minimize number of hosts when discovering
 	// setting this to true will drop every server from the output when it does

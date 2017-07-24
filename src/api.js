@@ -16,7 +16,6 @@ exports.search = function(query, options) {
 
 	return new Promise((resolve, reject) => {
 		cnet.find({filename: regex}).then(docs => {
-			log('debug', 'docs: ',docs)
 			var topResults = docs.sort((doc1, doc2) => {
 				levDoc1 = levenshtein.get(doc1.filename,query)
 				levDoc2 = levenshtein.get(doc2.filename,query)
@@ -26,7 +25,6 @@ exports.search = function(query, options) {
 			resolve(topResults)
 		}).catch(reject)
 	})
-
 }
 
 // TODO: a bunch of stuff

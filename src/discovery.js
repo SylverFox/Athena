@@ -3,10 +3,19 @@ const async = require('async')
 const dns = require('dns')
 const {spawn} = require("child_process")
 const iprange = require('iprange')
-const {log} = require('winston')
+const winston = require('winston')
+const {info, warn, debug, startTimer} = winston
 const PythonShell = require('python-shell')
 
 const smbparser = require('./smb/smbparser')
+
+
+const smblogger = new (winston.Logger)({
+	level: 'debug',
+	transports: [
+		new (winston.transports.File)({filename: 'logs/smberrors.log'})
+	]
+})
 
 // prepares objects for the discovery pipeline based on the options given
 exports.build = function(options) {
@@ -56,7 +65,7 @@ exports.ping = function({nodes, options}) {
 				nodes = nodes.filter(node => node.online)
 
 			resolve({nodes: nodes, options: options})
-			log('debug', `pinging finished. ${nodes.length} nodes left`)
+			debug(`pinging finished. ${nodes.length} nodes left`)
 		}
 
 		for(let node of nodes) {
@@ -81,7 +90,7 @@ exports.reverseLookup = function({nodes, options}) {
 			if(options.minimize)
 				nodes = nodes.filter(node => node.hostname)
 			resolve({nodes: nodes, options: options})
-			log('debug', `reverse lookup finished. ${nodes.length} left`)
+			debug(`reverse lookup finished. ${nodes.length} left`)
 		}
 
 		for(let node of nodes) {
@@ -111,7 +120,7 @@ exports.listShares = function({nodes, options}) {
 				
 				if(++found === nodes.length) {
 					nodes = nodes.filter(n => n.shares.length)
-					log('debug', `listing shares finished. ${nodes.length} left`)
+					debug(`listing shares finished. ${nodes.length} left`)
 					resolve({nodes: nodes, options: options})
 				}
 			})
@@ -128,64 +137,83 @@ exports.listShares = function({nodes, options}) {
 }
 
 exports.indexHosts = function({nodes, options}, datacallback) {
-	var p = Promise.resolve()
+	return new Promise((resolve, reject) => {
+		let queue = async.queue(indexShare, options.threads.network)
 
-	nodes.forEach(node => {
-		p = p.then(() => indexHost(node, options, datacallback))
+		timer = startTimer()
+		scanresults = []
+
+		queue.drain = () => {
+			// do stuff on done
+			timer.done('indexing done')
+			console.table(scanresults)
+			//totalSize = scanresults.reduce((sum, sr) => sum + sr.size)
+			//totalFiles = scanresults.reduce((sum, sr) => sum + sr.files + sr.directories)
+			//debug(totalSize,totalFiles)
+			resolve()
+		}
+
+		nodes.forEach(n => n.shares.forEach(s => {
+			queue.push({node: n, share: s, datacallback: datacallback}, (err, result) => {
+				if(err)
+					warn(`timeout while scanning ${s} on ${n.hostname}`, err)
+				else {
+					scanresults.push(result)
+					debug(`${queue.running()} jobs running, ${queue.length()} waiting`)
+				}
+			})
+		}))
 	})
-
-	return p
 }
 
-function indexHost(node, options, datacallback) {
-	return new Promise((resolve, reject) => {
-		log('debug', 'indexing '+node.hostname)
-		let filesIndexed = 0
+function indexShare({node, share, datacallback}, callback) {
+	let files = 0
+	let directories = 0
+	let errors = 0
+	let size = 0
 
-		function listPathOnTarget({smb2session, path, jobdata}, callback) {
-			smb2session.listPath(path).then(res => callback(null, res, jobdata)).catch(err => callback(err, null, jobdata))
-		}
+	const session = smbparser.session(node.ip, share)
 
-		function handleResult(err, res, jobdata) {
-			if(!err) {
-				res.forEach(file => {
-					if(file.directory) {
-						// add directory to queue
-						queue.push({
-							smb2session: this.data.smb2session,
-							path: this.data.path + file.filename + '\\',
-							jobdata: jobdata
-						}, handleResult)
-					} else {
-						// replace backslashes with forward slashes and strip last slash
-						path = this.data.path.replace(/\\/g, '/').slice(0, -1)
-						datacallback({node: jobdata.node, share: jobdata.share, path: path, file: file})
-						filesIndexed++
-						if(filesIndexed % 1000 === 0)
-							log('debug', 'files indexed: '+filesIndexed)
-					}
-				})
-			} else if(!smbparser.commonerrors.includes(err.code)) {
-				log('debug', 'encountered uncommon error: ',err.code)
-			} else {
-				log('debug', `small snag on ${jobdata.node.hostname};${jobdata.share};${this.data.path}`)
+	let queue = async.queue(async.timeout(listFiles, 10000))
+
+	queue.drain = () => {
+		session.close()
+		const scanresult = {name: node.hostname, share, files, directories, errors, size}
+		debug(scanresult)
+		callback(null, scanresult)
+	}
+
+	queue.push('', resultHandle)
+
+	// basically a wrapper for smbparser.listPath from promise to callback
+	function listFiles(path, cb) {
+		session.listPath(path)
+			.then(res => {
+				cb(null,{path: path,files: res})
+			})
+			.catch(err => {
+				cb({path: path, error: err})
+			})
+	}
+
+	function resultHandle(err, res) {
+		if(err) {
+			errors++
+			smblogger.error(node.hostname, share, err.path, err.error)
+		} else {
+			for(file of res.files) {
+				if(file.directory) {
+					directories++
+					queue.push(res.path + file.filename + '\\', resultHandle)
+				} else {
+					files++
+					size += file.size
+					path = res.path.replace(/\\/g, '/').slice(0, -1)
+					datacallback({node: node, share: share, path: path, file: file})
+				}
 			}
 		}
-	
-		//let queue = async.queue(listPathOnTarget, options.threads.network || 10)
-		let queue = async.queue(listPathOnTarget, 10)
-
-		queue.drain = () => resolve()
-
-		node.shares.forEach(s => {
-			const session = smbparser.session(node.ip, s)
-			queue.push({
-				smb2session: session,
-				path: '',
-				jobdata: {node: node, share: s}
-			}, handleResult)
-		})
-	})
+	}
 }
 
 function runPythonGetJSON(arguments, bulk) {
@@ -199,7 +227,7 @@ function runPythonGetJSON(arguments, bulk) {
 
 		proc.on('exit', code => {
 			if(code > 0) {
-				log('debug', `python ${arguments.join(' ')} -> exit code ${code} -> output: `, output)
+				debug(`python ${arguments.join(' ')} -> exit code ${code} -> output: `, output)
 				reject(new Error('Python script crashed'))
 			} else {
 				const parsedOutput = JSON.parse(output)

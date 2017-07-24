@@ -60,8 +60,11 @@ IndexingTasks.prototype.indexKnownHosts = function() {
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('indexKnownHosts',startTime,interval)
 	})
-	//.then(processing.buildFileIndex)
-	//.then(processing.buildKeywordIndex
+	.then(processing.buildFileIndex)
+	.then(processing.buildKeywordIndex)
+	.then(() => {
+		log('info', 'done postprocessing')
+	})
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 

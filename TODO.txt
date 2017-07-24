@@ -10,6 +10,7 @@
 - caching
 - group python scripts in bulk
 - automatically get subnet to scan
+- smb v1
 
 - web:
 	favicon

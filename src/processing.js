@@ -1,4 +1,4 @@
-const {log} = require('winston')
+const {debug} = require('winston')
 const {MongoClient} = require('mongodb')
 const monk = require('monk')
 
@@ -79,8 +79,8 @@ exports.updateOnlineStatus = function({nodes, options}) {
 
 exports.getNodeShareList = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
-		nodesDB.find({online: true}, '-_id ip hostname shares')
-		//nodesDB.find({online: true, hostname: 'cobrahuis'}, '-_id ip hostname shares')
+		//nodesDB.find({online: true}, '-_id ip hostname shares')
+		nodesDB.find({online: true}, {fields: {_id:0,ip:1,hostname:1,shares:1}, limit:1, skip:0})
 		.then(docs => resolve({nodes: docs, options: options}))
 		.catch(reject)
 	})
@@ -101,38 +101,31 @@ exports.insertNewPath = function({node, share, path, file}) {
 }
 
 exports.buildFileIndex = function() {
+	debug('building file index')
 
-	//TODO recode with map/reduce
-	return new Promise((resolve, reject) => {
-		log('debug', 'building file index')
+	const map = function() {
+		emit({filename: this.filename, size: this.size}, this.path)
+	}
 
-		nodesDB.find().each((node, {close, pause, resume}) => {
-			pause()
-			log('debug','current node: '+node.hostname)
-			walkTree(node.tree, '//'+node.hostname, listing => {
-				insertIntoIndex(node.hostname, listing, () => {
-					resume()
-				})
-			})
-		}).then(collection => {
-			return indexDB.remove({})
-		}).then(() => {
-			return indexDBTemp.find({})	
-		}).then(docs => {
-			return indexDB.insert(docs)
-		}).then(() => {
-			return indexDBTemp.remove({})
-		}).then(() => {
-			log('debug', 'buildfileindex succeeded')
-			resolve();
-		}).catch(err => {
-			log('warn', 'buildfileindex error.',err)
-			reject()
-		})
-	})
+	const reduce = function(key, values) {
+		return {paths: values}
+	}
+
+	
+	return filesDB.aggregate([
+		{$group: {
+			_id: {filename: '$filename', size: '$size'},
+			filename: {$first: '$filename'},
+			size: {$first: '$size'},
+			paths: {$push: '$path'}
+		}},
+		{$out: 'campusnetindex'}
+	])
 }
 
 exports.buildKeywordIndex = function() {
+	debug('building keyword index')
+
 	const map = function() {
 		// split filename on dot, dash, underscore and whitespace characters
 		// TODO filter on stuff
@@ -144,16 +137,8 @@ exports.buildKeywordIndex = function() {
 	const reduce = function(key, values) {
 		return values.length
 	}
-
-	return new Promise((resolve, reject) => {
-		log('debug', 'building keyword index')
-
-		indexDB.mapReduce(map, reduce, {out: {replace: 'keywords'}})
-		.then(resolve)
-		.catch(err => {
-			reject(err)
-		})
-	})
+	
+	return filesDB.mapReduce(map, reduce, {out: {replace: 'keywords'}})
 }
 
 function walkTree(tree, currentpath, cb) {
