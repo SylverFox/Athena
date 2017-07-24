@@ -18,7 +18,7 @@ config.discovery = {
 	// problems, use with care
 	threads: {
 		network: 100, // threads that use network connection
-		script: 10, // threads that run an external script
+		script: 50, // threads that run an external script
 	},
 	// minimize number of hosts when discovering
 	// setting this to true will drop every server from the output when it does

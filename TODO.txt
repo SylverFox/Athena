@@ -11,6 +11,7 @@
 - group python scripts in bulk
 - automatically get subnet to scan
 - smb v1
+- mongodb indexes
 
 - web:
 	favicon

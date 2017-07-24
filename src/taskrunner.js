@@ -52,7 +52,7 @@ TaskRunner.prototype.indexKnownHosts = function() {
 	processing.emptyFilesCache()
 	.then(() => processing.getNodeShareList({nodes: null, options: this.options}))
 	.then(res => discovery.indexHosts(res, (data) => {
-		updates.push(processing.insertNewPath(data))
+		updates.push(processing.insertNewFile(data))
 	}))
 	.then(Promise.all(updates))
 	.then(() => {
@@ -61,6 +61,7 @@ TaskRunner.prototype.indexKnownHosts = function() {
 		return processing.insertNewScan('indexKnownHosts',startTime,interval)
 	})
 	.then(processing.buildFileIndex)
+	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)
 	.then(() => {
 		log('info', 'done postprocessing')
@@ -70,6 +71,7 @@ TaskRunner.prototype.indexKnownHosts = function() {
 
 TaskRunner.prototype.postProcessing = function() {
 	processing.buildFileIndex()
+	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)
 	.then(() => {
 		log('info', 'done postprocessing')

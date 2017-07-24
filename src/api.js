@@ -15,13 +15,13 @@ exports.search = function(query, options) {
 	const regex = new RegExp(regexstring, 'gi')
 
 	return new Promise((resolve, reject) => {
-		cnet.find({filename: regex}).then(docs => {
+		cnet.find({filename: regex}, {limit: 1000}).then(docs => {
+			debug('results from db: '+docs.length)
 			var topResults = docs.sort((doc1, doc2) => {
 				levDoc1 = levenshtein.get(doc1.filename,query)
 				levDoc2 = levenshtein.get(doc2.filename,query)
 				return levDoc1 - levDoc2;
 			}).slice(0,20)
-			debug('results '+topResults.length)
 			resolve(topResults)
 		}).catch(reject)
 	})
