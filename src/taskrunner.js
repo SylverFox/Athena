@@ -3,12 +3,12 @@ const {log, startTimer} = require('winston')
 const discovery = require('./discovery')
 const processing = require('./processing')
 
-function IndexingTasks(config) {
+function TaskRunner(config) {
 	this.options = config
 	processing.verifyExistingCollections()
 }
 
-IndexingTasks.prototype.discoverNewHosts = function() {
+TaskRunner.prototype.discoverNewHosts = function() {
 	log('info', 'start: new host discovery.')
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -26,7 +26,7 @@ IndexingTasks.prototype.discoverNewHosts = function() {
 	.catch(err => log('warn', 'new host discovery failed.', err))
 }
 
-IndexingTasks.prototype.pingKnownHosts = function() {
+TaskRunner.prototype.pingKnownHosts = function() {
 	log('info', 'start: ping known hosts.')
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -42,7 +42,7 @@ IndexingTasks.prototype.pingKnownHosts = function() {
 	.catch(err => log('warn', 'pinging known hosts failed.', err))
 }
 
-IndexingTasks.prototype.indexKnownHosts = function() {
+TaskRunner.prototype.indexKnownHosts = function() {
 	log('info', 'start: index known hosts.')
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -68,4 +68,4 @@ IndexingTasks.prototype.indexKnownHosts = function() {
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 
-module.exports = IndexingTasks
+module.exports = TaskRunner

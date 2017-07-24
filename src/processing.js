@@ -102,16 +102,8 @@ exports.insertNewPath = function({node, share, path, file}) {
 
 exports.buildFileIndex = function() {
 	debug('building file index')
-
-	const map = function() {
-		emit({filename: this.filename, size: this.size}, this.path)
-	}
-
-	const reduce = function(key, values) {
-		return {paths: values}
-	}
-
 	
+
 	return filesDB.aggregate([
 		{$group: {
 			_id: {filename: '$filename', size: '$size'},
@@ -126,61 +118,10 @@ exports.buildFileIndex = function() {
 exports.buildKeywordIndex = function() {
 	debug('building keyword index')
 
-	const map = function() {
-		// split filename on dot, dash, underscore and whitespace characters
-		// TODO filter on stuff
-		this.filename.split(/[\.\s\-_]+/).forEach(word => {
-			emit(word, 1)
-		})
-	}
-
-	const reduce = function(key, values) {
-		return values.length
-	}
-	
-	return filesDB.mapReduce(map, reduce, {out: {replace: 'keywords'}})
-}
-
-function walkTree(tree, currentpath, cb) {
-	let listing = []
-
-	if(!tree || tree.length === 0) {
-		cb(listing)
-		return
-	}
-
-	tree.forEach((item, index) => {
-		if(item.size === 0)
-			return
-
-		listing.push({
-			filename: item.filename,
-			size: item.size,
-			directory: item.directory,
-			path: currentpath
-		})
-
-		walkTree(item.children, currentpath+'/'+item.filename, (result) => {
-			listing = listing.concat(result)
-
-			if(index === tree.length - 1)
-				cb(listing)
-		})
-	})
-}
-
-function insertIntoIndex(hostname, listing, cb) {
-	listing.forEach((item, index) => {
-		indexDBTemp.findOne({filename: item.filename, size: item.size}).then(doc => {
-			if(doc) {
-				doc.hostnames.push(hostname)
-				indexDBTemp.update({filename: item.filename, size: item.size}, doc)
-			} else {
-				item.hostnames = [hostname]
-				indexDBTemp.insert(item)
-			}
-			if(index === listing.length - 1)
-				cb()
-		})
-	})
+	return filesDB.aggregate([
+		{$project: {keywords: {$split: [{$toLower: '$filename'}, '.']}}},
+		{$unwind: '$keywords'},
+		{$sortByCount: '$keywords'},
+		{$out: 'keywords'}
+	])
 }

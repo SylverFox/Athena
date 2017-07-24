@@ -1,7 +1,7 @@
 const {MongoClient} = require('mongodb')
 const monk = require('monk')
 const levenshtein = require('fast-levenshtein');
-const {log} = require('winston')
+const {debug} = require('winston')
 
 const db = monk('localhost/athena')
 const nodesDB = db.get('nodes')
@@ -21,7 +21,7 @@ exports.search = function(query, options) {
 				levDoc2 = levenshtein.get(doc2.filename,query)
 				return levDoc1 - levDoc2;
 			}).slice(0,20)
-			log('debug', 'top results: ',topResults)
+			debug('results '+topResults.length)
 			resolve(topResults)
 		}).catch(reject)
 	})

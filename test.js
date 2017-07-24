@@ -27,9 +27,9 @@ keywdDB.find().each(doc => {
 */
 
 
-const IndexingTasks = require('./src/indexingtasks')
-const indexer = new IndexingTasks(config.discovery)
+const TaskRunner = require('./src/taskrunner')
+const taskrunner = new TaskRunner(config.discovery)
 
-//indexer.discoverNewHosts()
-//indexer.pingKnownHosts()
-indexer.indexKnownHosts()
+//taskrunner.discoverNewHosts()
+//taskrunner.pingKnownHosts()
+taskrunner.indexKnownHosts()

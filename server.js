@@ -5,24 +5,36 @@ const winston = require('winston')
 const {MongoClient} = require('mongodb')
 const monk = require('monk')
 const responseTime = require('response-time')
+const schedule = require('node-schedule')
+require('console.table')
 
 const api = require('./src/api')
 const helper = require('./src/helper')
 const config = require('./config')
-const scheduler = require('./src/scheduler')
+const TaskRunner = require('./src/taskrunner')
+
+/** INIT WINSTON **/
 
 winston.level = config.loglevel;
 winston.remove(winston.transports.Console);
 winston.add(winston.transports.Console, {colorize: true});
 winston.add(winston.transports.File, {filename: 'logs/athena'+Date.now()+'.log'});
 
+/** INIT MONGODB **/
+
 const db = monk('localhost/athena')
-db.then(() => winston.log('info','connected to MongoDB'))
-db.catch(err => winston.log('error', 'failed to connect to mongodb', err))
+db.then(() => winston.info('connected to MongoDB'))
+db.catch(err => winston.error('error', 'failed to connect to mongodb', err))
+db.close()
 
-scheduler.init(config)
+/** INIT SCHEDULER **/
 
-/** EXPRESS **/
+const taskrunner = new TaskRunner(config.discovery)
+schedule.scheduleJob(config.scheduling.discoverTime, () => taskrunner.discoverNewHosts())
+schedule.scheduleJob(config.scheduling.pingTime, () => taskrunner.pingKnownHosts())
+schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHosts())
+
+/** INIT EXPRESS **/
 
 const app = express()
 app.set('view engine', 'ejs');
@@ -73,6 +85,6 @@ app.all('/api*', (req, res) => {
 	res.send('API has not been implemented yet!')
 })
 
-app.listen(config.webserver.port, () => 
+app.listen(config.webserver.port, () =>
 	winston.log('info', `Webserver running on http://${config.webserver.hostname}:${config.webserver.port}`)
 );
