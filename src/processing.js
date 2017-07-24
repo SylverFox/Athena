@@ -103,16 +103,39 @@ exports.insertNewPath = function({node, share, path, file}) {
 exports.buildFileIndex = function() {
 	debug('building file index')
 	
+	// Map-Reduce folders to include them as files with sizes
+	const mapFolders = function() {
+		const splitPath = this.path.slice(2).split('/')
 
-	return filesDB.aggregate([
-		{$group: {
-			_id: {filename: '$filename', size: '$size'},
-			filename: {$first: '$filename'},
-			size: {$first: '$size'},
-			paths: {$push: '$path'}
-		}},
-		{$out: 'campusnetindex'}
-	])
+		for(let f = splitPath.length-1; f > 0; f--) {
+			const file = {
+				filename: splitPath[f],
+				path: '//'+splitPath.slice(0,f).join('/')
+			}
+			emit(file,this.size)
+		}
+
+		// output the original file as well
+		emit({filename: this.filename, path: this.path}, this.size)
+	}
+
+	const reduceFolders = function(key, values) {
+		return values.reduce((a,b) => a+b)
+	}
+
+	const aggregateFolders = function(collection) {
+		db.get(collection.s.name).aggregate([
+			{$group: {
+				_id: {filename: '$_id.filename', size: '$value'},
+				filename: {$first: '$_id.filename'},
+				size: {$first: '$value'},
+				paths: {$push: '$_id.path'}
+			}},
+			{$out: 'campusnetindex'}
+		])
+	}
+
+	return filesDB.mapReduce(mapFolders, reduceFolders, {out:{replace:'files_temp'}}).then(aggregateFolders)
 }
 
 exports.buildKeywordIndex = function() {

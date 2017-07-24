@@ -32,4 +32,5 @@ const taskrunner = new TaskRunner(config.discovery)
 
 //taskrunner.discoverNewHosts()
 //taskrunner.pingKnownHosts()
-taskrunner.indexKnownHosts()
+//taskrunner.indexKnownHosts()
+taskrunner.postProcessing()

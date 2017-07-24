@@ -68,4 +68,13 @@ TaskRunner.prototype.indexKnownHosts = function() {
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 
+TaskRunner.prototype.postProcessing = function() {
+	processing.buildFileIndex()
+	.then(processing.buildKeywordIndex)
+	.then(() => {
+		log('info', 'done postprocessing')
+	})
+	.catch(err => log('warn', 'post processing failed', err))
+}
+
 module.exports = TaskRunner
