@@ -13,11 +13,11 @@ append content
 			- console.log(searchresults)
 			if searchresults && searchresults.length
 				ul.searchresults
-				each res in searchresults
-					li.searchresult
-						a.resultname(href='smb:'+res.paths[0]+'/'+res.filename)= res.filename
-						span= '- '+helper.bytesToSize(res.size)
-						br
-						span:a.resultpath(href=res.paths[0])= res.paths[0]
+					each res in searchresults
+						li.searchresult
+							a.resultname(href='smb:'+res.paths[0]+'/'+res.filename)= res.filename
+							span= '- '+helper.bytesToSize(res.size)
+							br
+							span:a.resultpath(href=res.paths[0])= res.paths[0]
 			else
 				| No results :(

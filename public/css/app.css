@@ -62,22 +62,20 @@ main.frontpage {
 footer {
 	width: 90%;
 	margin-top: 2em;
+
 }
 
-.footer-links {
+.footer-content {
 	display: flex;
 	justify-content: flex-end;
 }
 
-.footer-links a {
+.footer-content a {
 	margin: 10px 15px 10px 15px;
 }
 
-
-.footer-link li:after {
-	content:"/";
-	margin-right:8px;
-	margin-left:8px;
+.footer-content a.left {
+	margin-right: auto;
 }
 
 #particles-js {

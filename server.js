@@ -18,7 +18,7 @@ const TaskRunner = require('./src/taskrunner')
 winston.level = config.loglevel;
 winston.remove(winston.transports.Console);
 winston.add(winston.transports.Console, {colorize: true});
-winston.add(winston.transports.File, {filename: config.loglocation+'/athena_'+Date.now()+'.log'});
+winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'});
 
 /** INIT MONGODB **/
 

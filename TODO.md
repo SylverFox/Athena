@@ -18,6 +18,7 @@
 - API documentation
 - general documentation
 - custom error pages
+- stats page, look at https://d3js.org
 
 ## bugs
 - error if logs directory does not exists

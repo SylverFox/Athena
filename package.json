@@ -25,8 +25,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "node test.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "forever": "forever --minUptime 5000 --spinSleepTime 5000 -w --watchIgnore '*.pug,*.log' server.js"
   },
   "author": "Joris Diesvelt",
   "license": "MIT",
