@@ -1,8 +1,11 @@
 const {debug} = require('winston')
 const {MongoClient} = require('mongodb')
 const monk = require('monk')
+const config = require('../config')
 
-const db = monk('localhost/athena')
+const {username,password,host,port,name} = config.database
+const creds = username && password ? `${username}:${password}@` : ''
+const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
 
 const nodesDB = db.get('nodes')
 const filesDB = db.get('campusnetfiles')

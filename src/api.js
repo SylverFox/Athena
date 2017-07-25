@@ -2,8 +2,11 @@ const {MongoClient} = require('mongodb')
 const monk = require('monk')
 const levenshtein = require('fast-levenshtein');
 const {debug} = require('winston')
+const config = require('../config')
 
-const db = monk('localhost/athena')
+const {username,password,host,port,name} = config.database
+const creds = username && password ? `${username}:${password}@` : ''
+const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
 const nodesDB = db.get('nodes')
 const cnet = db.get('campusnetindex')
 

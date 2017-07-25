@@ -2,9 +2,11 @@ const {log, startTimer} = require('winston')
 
 const discovery = require('./discovery')
 const processing = require('./processing')
+const memwatch = require('memwatch-next')
+const config = require('../config')
 
-function TaskRunner(config) {
-	this.options = config
+function TaskRunner() {
+	this.options = config.discovery
 	processing.verifyExistingCollections()
 }
 

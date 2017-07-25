@@ -18,11 +18,13 @@ const TaskRunner = require('./src/taskrunner')
 winston.level = config.loglevel;
 winston.remove(winston.transports.Console);
 winston.add(winston.transports.Console, {colorize: true});
-winston.add(winston.transports.File, {filename: 'logs/athena'+Date.now()+'.log'});
+winston.add(winston.transports.File, {filename: config.loglocation+'/athena_'+Date.now()+'.log'});
 
 /** INIT MONGODB **/
 
-const db = monk('localhost/athena')
+const {username,password,host,port,name} = config.database
+const creds = username && password ? `${username}:${password}@` : ''
+const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
 db.then(() => winston.info('connected to MongoDB'))
 db.catch(err => winston.error('error', 'failed to connect to mongodb', err))
 db.close()
@@ -37,7 +39,7 @@ schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHos
 /** INIT EXPRESS **/
 
 const app = express()
-app.set('view engine', 'ejs');
+app.set('view engine', 'pug');
 app.use(express.static('public'))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true})) 
@@ -68,7 +70,7 @@ app.post('/search', (req, res) => {
 			})
 		}).catch(err => {
 			res.status(500).send('Oopsie')
-			winston.log('warn', 'search page broke', err)
+			winston.log('error', 'search page broke', err)
 		})
 	}
 })

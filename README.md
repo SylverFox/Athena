@@ -30,19 +30,20 @@ Clone the repository
 git clone https://github.com/SylverFox/Athena.git
 ```
 
-Then move into the project
+Then move into the project with `cd Athena` and start the server
 
 ```
-cd Athena
+[sudo] npm start
 ```
+
+If you are running the app on production, make sure to set the environment variable
+
+- **linux**: `export NODE_ENV=production`
+- **windows**: `set NODE_ENV=production`
 
 And start the server
 
-```
-sudo node server
-```
 
-(sudo is not needed for windows users)
 
 ## License
 
