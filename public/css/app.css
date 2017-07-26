@@ -15,6 +15,7 @@ body {
 	align-items: center;
 	min-height: 100vh;
 	flex-direction: column;
+	background-color: GAINSBORO;
 }
 
 a, a:hover, a:active, a:visited {
@@ -48,15 +49,12 @@ main {
 	flex-direction: column;
 }
 
-main.frontpage {
-	justify-content: center;
-}
-
-
 .title-bar {
 	text-align: center;
 	align-self: center;
+	margin: auto;
 	height: 100%;
+	width: 100%;
 }
 
 footer {
@@ -84,7 +82,7 @@ footer {
 
 #particles-js canvas {
 	display:block;
-    background: #ccc;
+    background: GAINSBORO;
     position: fixed;
     left: 0;
     top: 0;
@@ -92,8 +90,9 @@ footer {
 }
 
 #searchform {
-	width: 50%;
-	min-width: 768px;
+	width: 100%;
+	max-width: 650px;
+	margin: auto;
 }
 
 #searchbar {

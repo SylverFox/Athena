@@ -30,20 +30,20 @@ Clone the repository
 git clone https://github.com/SylverFox/Athena.git
 ```
 
-Then move into the project with `cd Athena` and start the server
+Then move into the project with `cd Athena` and install dependencies
 
 ```
-[sudo] npm start
+npm install
 ```
 
-If you are running the app on production, make sure to set the environment variable
+and start the server `[sudo] npm start`
+
+If you are running the app on production, make sure to set the node environment variable to production before starting
 
 - **linux**: `export NODE_ENV=production`
 - **windows**: `set NODE_ENV=production`
 
-And start the server
-
-
+Also take a look at `config.js` for any configuration you might want to change
 
 ## License
 

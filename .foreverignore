@@ -1,0 +1,5 @@
+logs
+.log
+views
+node_modules
+public

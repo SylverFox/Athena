@@ -46,6 +46,8 @@ TaskRunner.prototype.pingKnownHosts = function() {
 
 TaskRunner.prototype.indexKnownHosts = function() {
 	log('info', 'start: index known hosts.')
+	const hd = new memwatch.HeapDiff()
+
 	const timer = startTimer()
 	const startTime = Date.now()
 
@@ -67,6 +69,8 @@ TaskRunner.prototype.indexKnownHosts = function() {
 	.then(processing.buildKeywordIndex)
 	.then(() => {
 		log('info', 'done postprocessing')
+		const diff = hd.end()
+		console.log(diff)
 	})
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }

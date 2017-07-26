@@ -4,7 +4,8 @@ html(lang='en')
 		title Athena
 
 		meta(charset='utf-8')
-		meta(name='viewport', content='width=device-width', initial-scale='1')
+		meta(name='viewport', content='width=device-width', height='device-height', initial-scale='1')
+		meta(name='theme-color', content='#ccc')
 
 		link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css')
 		link(rel='stylesheet', href='https://fonts.googleapis.com/css?family=Open+Sans')
@@ -14,15 +15,14 @@ html(lang='en')
 			script(src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js')
 			script(src='/js/app.js' defer='defer')
 		
-		
 	body
 		block header
 			header
 				h2: a(href='/') Athena
 				hr
 
-
-		block content
+		main
+			block content
 
 		footer
 			hr

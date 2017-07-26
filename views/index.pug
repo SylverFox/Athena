@@ -7,12 +7,10 @@ append scripts
 
 block header
 
-append content
+block content
+	div.title-bar
+		h1 Athena
+		form(action='/search', method='post', id='searchform')
+			input#search.form-control(type='text', name='search', autocomplete='off', placeholder='search athena', value=query)
 	div#particles-js
-
-	main.frontpage
-		div.title-bar
-			h1 Athena
-			form(action='/search', method='post', id='searchform')
-				input#search.form-control(type='text', name='search', autocomplete='off', placeholder='search athena', value=query)
 

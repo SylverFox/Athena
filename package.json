@@ -12,6 +12,7 @@
     "fast-levenshtein": "^2.0.6",
     "ip-range-check": "0.0.2",
     "iprange": "^0.1.0",
+    "memwatch-next": "^0.3.0",
     "mongodb": "^2.2.30",
     "monk": "^6.0.1",
     "net-ping": "^1.2.0",
@@ -26,7 +27,7 @@
   "devDependencies": {},
   "scripts": {
     "start": "node server.js",
-    "forever": "forever --minUptime 5000 --spinSleepTime 5000 -w --watchIgnore '*.pug,*.log' server.js"
+    "forever": "forever --minUptime 5000 --spinSleepTime 5000 -w server.js"
   },
   "author": "Joris Diesvelt",
   "license": "MIT",
