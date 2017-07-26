@@ -30,14 +30,14 @@ exports.build = function(options) {
 
 		options.threads = options.threads || {}
 		if(!options.threads.network)
-			log('info', 'no network threads specified')
+			warn('no network threads specified')
 		if(!options.threads.script)
-			log('info', 'no script threads specified')
+			warn('no script threads specified')
 		options.minimize = options.minimize || true
 		
 		const nodes = iprange(options.range).map(ip => ({ip: ip}))
 		resolve({nodes: nodes, options: options})
-		log('debug', `finished building. ${nodes.length} nodes left`)
+		debug(`finished building. ${nodes.length} nodes left`)
 	})
 }
 
@@ -139,17 +139,16 @@ exports.listShares = function({nodes, options}) {
 exports.indexHosts = function({nodes, options}, datacallback) {
 	return new Promise((resolve, reject) => {
 		let queue = async.queue(indexShare, options.threads.network)
-
-		timer = startTimer()
-		scanresults = []
+		let scanresults = []
 
 		queue.drain = () => {
-			// do stuff on done
-			timer.done('indexing done')
-			console.table(scanresults)
-			//totalSize = scanresults.reduce((sum, sr) => sum + sr.size)
-			//totalFiles = scanresults.reduce((sum, sr) => sum + sr.files + sr.directories)
-			//debug(totalSize,totalFiles)
+			const totalSize = scanresults.reduce((sum, sr) => sum + sr.size, 0)
+			const totalFiles = scanresults.reduce((sum, sr) => sum + sr.files, 0)
+			const totalDirs = scanresults.reduce((sum, sr) => sum + sr.directories, 0)
+			const totalErrs = scanresults.reduce((sum, sr) => sum + sr.errors, 0)
+			debug(`total size: ${totalSize}, total files: ${totalFiles}, total directories: ${totalDirs}, total errors: ${totalErrs}`)
+
+			scanresults = null
 			resolve()
 		}
 
@@ -172,12 +171,13 @@ function indexShare({node, share, datacallback}, callback) {
 	let errors = 0
 	let size = 0
 
-	const session = smbparser.session(node.ip, share)
+	let session = smbparser.session(node.ip, share)
 
 	let queue = async.queue(async.timeout(listFiles, 10000))
 
 	queue.drain = () => {
 		session.close()
+		session = null
 		const scanresult = {name: node.hostname, share, files, directories, errors, size}
 		debug(scanresult)
 		callback(null, scanresult)
@@ -187,7 +187,7 @@ function indexShare({node, share, datacallback}, callback) {
 
 	// basically a wrapper for smbparser.listPath from promise to callback
 	function listFiles(path, cb) {
-		session.listPath(path)
+		smbparser.listPath(session, path)
 			.then(res => {
 				cb(null,{path: path,files: res})
 			})
@@ -201,14 +201,14 @@ function indexShare({node, share, datacallback}, callback) {
 			errors++
 			smblogger.error(node.hostname, share, err.path, err.error)
 		} else {
-			for(file of res.files) {
+			for(let file of res.files) {
 				if(file.directory) {
 					directories++
 					queue.push(res.path + file.filename + '\\', resultHandle)
 				} else {
 					files++
 					size += file.size
-					path = res.path.replace(/\\/g, '/').slice(0, -1)
+					const path = res.path.replace(/\\/g, '/').slice(0, -1)
 					datacallback({node: node, share: share, path: path, file: file})
 				}
 			}
@@ -216,10 +216,9 @@ function indexShare({node, share, datacallback}, callback) {
 	}
 }
 
-function runPythonGetJSON(arguments, bulk) {
+function runPythonGetJSON(args, bulk) {
 	return new Promise((resolve, reject) => {
-		//log('debug', 'running python ', arguments)
-		let proc = spawn('python', arguments)
+		let proc = spawn('python', args)
 		proc.stderr.pipe(proc.stdout)
 
 		let output = ''
@@ -227,7 +226,7 @@ function runPythonGetJSON(arguments, bulk) {
 
 		proc.on('exit', code => {
 			if(code > 0) {
-				debug(`python ${arguments.join(' ')} -> exit code ${code} -> output: `, output)
+				debug(`python ${args.join(' ')} -> exit code ${code} -> output: `, output)
 				reject(new Error('Python script crashed'))
 			} else {
 				const parsedOutput = JSON.parse(output)

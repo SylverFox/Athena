@@ -1,5 +1,5 @@
 const SMB = require('smb2c')
-const {log} = require('winston')
+const {debug, warn} = require('winston')
 
 const ATTR_READONLY 			= 0x0001
 const ATTR_HIDDEN 				= 0x0002
@@ -24,54 +24,34 @@ function constructClient(ip, share) {
 	})
 }
 
-function Session(ip, share) {
-	this.client = constructClient(ip, share)
-	this.listPath = (path) => module.exports.listPath(this.client, path)
-	this.exists = (path) => module.exports.exists(this.client, path)
-	this.close = this.client.close
+exports.session = function(ip, share) {
+	return constructClient(ip, share)
 }
 
-module.exports = Session
-
-module.exports.session = function(ip, share) {
-	return new Session(ip, share)
-}
-
-module.exports.exists = function(session, path) {
-	return new Promise((resolve, reject) => {
-		session.exists(path, (err, exists) => {
-			if(err)
-				reject(err)
-			else 
-				resolve(exists)
-		})
-	})
-}
-
-module.exports.listPath = function(session, path) {
+exports.listPath = function(client, path) {
 	return new Promise((resolve , reject) => {
 		let tempsession = false
 
-		if(!(session instanceof SMB)) {
-			if(session.ip && session.share) {
-				session = constructClient(session.ip, session.share)
+		if(!(client instanceof SMB)) {
+			if(client.ip && client.share) {
+				client = constructClient(client.ip, client.share)
 				tempsession = true
 			}
 			else {
-				log('warn', 'invalid session or no ip and share')
+				warn('invalid session or no ip and share')
 				reject(new Error('cannot create session without ip or share'))
 				return
 			}
 		}
 		
-		session.readdir(path, (err, files) => {
+		client.readdir(path, (err, files) => {
 			if(tempsession)
-				session.close()
+				client.close()
 
 			if(err)
 				reject(err)
 			else {
-				output = []
+				let output = []
 				for(let file of files) {
 					output.push({
 						filename: file.fileName,
@@ -85,7 +65,7 @@ module.exports.listPath = function(session, path) {
 	})
 }
 
-module.exports.commonerrors = ['STATUS_ACCESS_DENIED','STATUS_LOGON_FAILURE','STATUS_BAD_NETWORK_NAME', 'ETIMEDOUT']
+exports.commonerrors = ['STATUS_ACCESS_DENIED','STATUS_LOGON_FAILURE','STATUS_BAD_NETWORK_NAME', 'ETIMEDOUT']
 
 // TODO list shares of host
 

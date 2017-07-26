@@ -1,3 +1,5 @@
+'use strict'
+
 const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
@@ -6,19 +8,22 @@ const {MongoClient} = require('mongodb')
 const monk = require('monk')
 const responseTime = require('response-time')
 const schedule = require('node-schedule')
+const fs = require('fs')
 require('console.table')
 
+const config = require('./config')
 const api = require('./src/api')
 const helper = require('./src/helper')
-const config = require('./config')
 const TaskRunner = require('./src/taskrunner')
+
 
 /** INIT WINSTON **/
 
-winston.level = config.loglevel;
-winston.remove(winston.transports.Console);
-winston.add(winston.transports.Console, {colorize: true});
-winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'});
+if(!fs.existsSync(config.loglocation)) fs.mkdirSync(config.loglocation)
+winston.level = config.loglevel
+winston.remove(winston.transports.Console)
+winston.add(winston.transports.Console, {colorize: true})
+winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'})
 
 /** INIT MONGODB **/
 
@@ -39,7 +44,7 @@ schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHos
 /** INIT EXPRESS **/
 
 const app = express()
-app.set('view engine', 'pug');
+app.set('view engine', 'pug')
 app.use(express.static('public'))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true})) 
@@ -48,15 +53,13 @@ app.use(responseTime())
 
 app.all('/*', (req, res, next) => {
 	if(!ipRangeCheck(req.ip, config.webserver.allowedHosts)) {
-		res.status(403).send('You are not allowed to view this page outside the UT');
+		res.status(403).send('You are not allowed to view this page outside the UT')
 	} else {
 		next()
 	}
 })
 
-app.get('/', (req, res) => {
-	res.render('index')
-})
+app.get('/', (req, res) => res.render('index'))
 
 app.post('/search', (req, res) => {
 	if(!req.body.search) {
@@ -70,23 +73,18 @@ app.post('/search', (req, res) => {
 			})
 		}).catch(err => {
 			res.status(500).send('Oopsie')
-			winston.log('error', 'search page broke', err)
+			winston.error('search page broke', err)
 		})
 	}
 })
 
-app.get('/stats', (req, res) => {
-	res.render('stats')
-})
-
-app.get('/about', (req, res) => {
-	res.render('about')
-})
+app.get('/stats', (req, res) => res.render('stats'))
+app.get('/about', (req, res) => res.render('about'))
 
 app.all('/api*', (req, res) => {
 	res.send('API has not been implemented yet!')
 })
 
 app.listen(config.webserver.port, () =>
-	winston.log('info', `Webserver running on http://${config.webserver.hostname}:${config.webserver.port}`)
-);
+	winston.info(`Webserver running on http://${config.webserver.hostname}:${config.webserver.port}`)
+)

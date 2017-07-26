@@ -13,7 +13,6 @@ const cnet = db.get('campusnetindex')
 
 exports.search = function(query, options) {
 	const keywords = query.split(' ').map(escape)
-	// http://www.regular-expressions.info/completelines.html
 	const regexstring = '^(?=.*?' + keywords.join(')(?=.*?') + ').*$'
 	const regex = new RegExp(regexstring, 'gi')
 

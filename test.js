@@ -1,13 +1,16 @@
+'use strict'
+
 const monk = require('monk')
 const responseTime = require('response-time')
 const winston = require('winston')
 const config = require('./config')
 require('console.table')
 
-winston.level = config.loglevel;
-winston.remove(winston.transports.Console);
-winston.add(winston.transports.Console, {colorize: true});
-
+//winston.level = config.loglevel
+winston.level = 'debug'
+winston.remove(winston.transports.Console)
+winston.add(winston.transports.Console, {colorize: true, timestamp: true})
+winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'})
 /*
 const db = monk('localhost/athena')
 db.catch(console.log)
@@ -27,10 +30,13 @@ keywdDB.find().each(doc => {
 */
 
 
-const TaskRunner = require('./src/taskrunner')
-const taskrunner = new TaskRunner()
+const taskrunner = require('./src/taskrunner')
+const helper = require('./src/helper')
+//const taskrunner = new TaskRunner()
 
 //taskrunner.discoverNewHosts()
 //taskrunner.pingKnownHosts()
-taskrunner.indexKnownHosts()
+//taskrunner.indexKnownHosts()
 //taskrunner.postProcessing()
+
+taskrunner.indexKnownHosts()

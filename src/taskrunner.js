@@ -2,20 +2,14 @@ const {log, startTimer} = require('winston')
 
 const discovery = require('./discovery')
 const processing = require('./processing')
-const memwatch = require('memwatch-next')
 const config = require('../config')
 
-function TaskRunner() {
-	this.options = config.discovery
-	processing.verifyExistingCollections()
-}
-
-TaskRunner.prototype.discoverNewHosts = function() {
+exports.discoverNewHosts = function() {
 	log('info', 'start: new host discovery.')
 	const timer = startTimer()
 	const startTime = Date.now()
 
-	discovery.build(this.options)
+	discovery.build(config.discovery)
 	.then(discovery.ping)
 	.then(discovery.reverseLookup)
 	.then(discovery.listShares)
@@ -28,12 +22,12 @@ TaskRunner.prototype.discoverNewHosts = function() {
 	.catch(err => log('warn', 'new host discovery failed.', err))
 }
 
-TaskRunner.prototype.pingKnownHosts = function() {
+exports.pingKnownHosts = function() {
 	log('info', 'start: ping known hosts.')
 	const timer = startTimer()
 	const startTime = Date.now()
 
-	processing.getNodeIPList({nodes: null, options: this.options})
+	processing.getNodeIPList({nodes: null, options: config.discovery})
 	.then(discovery.ping)
 	.then(processing.updateOnlineStatus)
 	.then(() => {
@@ -44,9 +38,9 @@ TaskRunner.prototype.pingKnownHosts = function() {
 	.catch(err => log('warn', 'pinging known hosts failed.', err))
 }
 
-TaskRunner.prototype.indexKnownHosts = function() {
+exports.indexKnownHosts = function(callback) {
 	log('info', 'start: index known hosts.')
-	const hd = new memwatch.HeapDiff()
+
 
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -54,12 +48,13 @@ TaskRunner.prototype.indexKnownHosts = function() {
 	let updates = []
 
 	processing.emptyFilesCache()
-	.then(() => processing.getNodeShareList({nodes: null, options: this.options}))
+	.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
 	.then(res => discovery.indexHosts(res, (data) => {
 		updates.push(processing.insertNewFile(data))
 	}))
 	.then(Promise.all(updates))
 	.then(() => {
+		updates = null // not emptying this array causes a memory leak
 		timer.done('end: index known hosts.')
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('indexKnownHosts',startTime,interval)
@@ -69,13 +64,12 @@ TaskRunner.prototype.indexKnownHosts = function() {
 	.then(processing.buildKeywordIndex)
 	.then(() => {
 		log('info', 'done postprocessing')
-		const diff = hd.end()
-		console.log(diff)
+		if (callback) callback()
 	})
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 
-TaskRunner.prototype.postProcessing = function() {
+exports.postProcessing = function() {
 	processing.buildFileIndex()
 	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)
@@ -84,5 +78,3 @@ TaskRunner.prototype.postProcessing = function() {
 	})
 	.catch(err => log('warn', 'post processing failed', err))
 }
-
-module.exports = TaskRunner

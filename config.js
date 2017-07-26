@@ -47,7 +47,7 @@ config.database.password = process.env.MONGO_PASS || ''
 
 /** LOGGING **/
 
-config.loglevel = 'debug'
+config.loglevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug'
 config.loglocation = 'logs'
 
 module.exports = config;
