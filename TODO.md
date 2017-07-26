@@ -19,12 +19,12 @@
 - general documentation
 - custom error pages
 - stats page, look at https://d3js.org
+- google analytics
 
 ## bugs
 - error if logs directory does not exists
 - check for pysmb -> EPIPE error
+- smb2 does not list complete folder contents
 
 ## pipeline for next release
-- work out environment structure
 - database optimization
-- google analytics

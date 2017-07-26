@@ -15,6 +15,7 @@ const config = require('./config')
 const api = require('./src/api')
 const helper = require('./src/helper')
 const taskrunner = require('./src/taskrunner')
+const processing = require('./src/processing')
 
 
 /** INIT WINSTON **/
@@ -32,7 +33,12 @@ const creds = username && password ? `${username}:${password}@` : ''
 const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
 db.then(() => winston.info('connected to MongoDB'))
 db.catch(err => winston.error('error', 'failed to connect to mongodb', err))
+
+processing.verifyExistingCollections()
+
 db.close()
+
+
 
 /** INIT SCHEDULER **/
 

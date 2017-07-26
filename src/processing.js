@@ -14,9 +14,10 @@ const scansDB = db.get('scans')
 const keywdDB = db.get('keywords')
 const indexDB = db.get('files')
 
-exports.verifyExistingCollections = function() {
-	// TODO put this in taskrunner as startup task
+const tempFilesDB = db.get('temp_files')
+const tempFoldsDB = db.get('temp_dirs')
 
+exports.verifyExistingCollections = function() {
 	// verify existing collections
 	db.create('nodes')
 	db.create('campusnetfiles')
@@ -26,9 +27,11 @@ exports.verifyExistingCollections = function() {
 	db.create('files')
 
 	// verify indexes
-	filesDB.createIndex({filename: 1})
-	foldsDB.createIndex({filename: 1})
-	indexDB.createIndex({filename: 1})
+	filesDB.createIndex({keywords: 1})
+	foldsDB.createIndex({keywords: 1})
+	keywdDB.createIndex({keywords: 1})
+
+
 
 }
 
@@ -112,15 +115,30 @@ exports.insertNewFile = function({node, share, path, file}) {
 exports.buildFileIndex = function() {
 	debug('building file index')
 
-	return indexDB.aggregate([
-		{$group: {
-			_id: {filename: '$filename', size: '$size'},
-			filename: {$first: '$filename'},
-			size: {$first: '$size'},
-			paths: {$push: '$path'}
-		}},
-		{$out: 'campusnetfiles'}
-	], {allowDiskUse: true})
+	const mapFiles = function() {
+		// split files by keyword
+		const keywords = this.filename.split(/[^\d\w]+/g)
+			.filter(kw => kw.length).map(kw => kw.toLowerCase())
+		emit({keywords: keywords, filename: this.filename, size: this.size}, {paths: [this.path]})
+	}
+
+	const reduceFiles = function(key, values) {
+		return {paths: values.map(v => v.paths[0])}
+	}
+
+	const aggregateFiles = function(collection) {
+		tempFilesDB.aggregate([
+			{$project: {
+				filename: '$_id.filename',
+				size: '$_id.size',
+				paths: '$value.paths',
+				keywords: '$_id.keywords'
+			}},
+			{$out: 'campusnetfiles'}
+		], {allowDiskUse: true})
+	}
+
+	return indexDB.mapReduce(mapFiles, reduceFiles, {out: {replace: 'temp_files'}}).then(aggregateFiles)
 }
 
 exports.buildDirectoryIndex = function () {
@@ -154,7 +172,7 @@ exports.buildDirectoryIndex = function () {
 		], {allowDiskUse: true})
 	}
 
-	return indexDB.mapReduce(mapFolders, reduceFolders, {out:{replace:'files_temp'}}).then(aggregateFolders)
+	return indexDB.mapReduce(mapFolders, reduceFolders, {out: {replace: 'temp_dirs'}}).then(aggregateFolders)
 }
 
 exports.buildKeywordIndex = function() {

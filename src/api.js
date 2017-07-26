@@ -8,17 +8,17 @@ const {username,password,host,port,name} = config.database
 const creds = username && password ? `${username}:${password}@` : ''
 const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
 const nodesDB = db.get('nodes')
-const cnet = db.get('campusnetindex')
+const filesDB = db.get('campusnetfiles')
+const foldsDB = db.get('campusnetdirs')
 
 
 exports.search = function(query, options) {
 	const keywords = query.split(' ').map(escape)
-	const regexstring = '^(?=.*?' + keywords.join(')(?=.*?') + ').*$'
-	const regex = new RegExp(regexstring, 'gi')
 
 	return new Promise((resolve, reject) => {
-		cnet.find({filename: regex}, {limit: 1000}).then(docs => {
+		filesDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 100}).then(docs => {
 			debug('results from db: '+docs.length)
+			console.log(docs)
 			var topResults = docs.sort((doc1, doc2) => {
 				levDoc1 = levenshtein.get(doc1.filename,query)
 				levDoc2 = levenshtein.get(doc2.filename,query)
