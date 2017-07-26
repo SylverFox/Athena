@@ -4,7 +4,7 @@ const discovery = require('./discovery')
 const processing = require('./processing')
 const config = require('../config')
 
-exports.discoverNewHosts = function() {
+exports.discoverNewHosts = function(callback) {
 	log('info', 'start: new host discovery.')
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -22,7 +22,7 @@ exports.discoverNewHosts = function() {
 	.catch(err => log('warn', 'new host discovery failed.', err))
 }
 
-exports.pingKnownHosts = function() {
+exports.pingKnownHosts = function(callback) {
 	log('info', 'start: ping known hosts.')
 	const timer = startTimer()
 	const startTime = Date.now()
@@ -69,7 +69,7 @@ exports.indexKnownHosts = function(callback) {
 	.catch(err => log('warn', 'indexing known hosts failed', err))
 }
 
-exports.postProcessing = function() {
+exports.postProcessing = function(callback) {
 	processing.buildFileIndex()
 	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)

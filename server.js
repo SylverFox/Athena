@@ -14,7 +14,7 @@ require('console.table')
 const config = require('./config')
 const api = require('./src/api')
 const helper = require('./src/helper')
-const TaskRunner = require('./src/taskrunner')
+const taskrunner = require('./src/taskrunner')
 
 
 /** INIT WINSTON **/
@@ -36,7 +36,6 @@ db.close()
 
 /** INIT SCHEDULER **/
 
-const taskrunner = new TaskRunner(config.discovery)
 schedule.scheduleJob(config.scheduling.discoverTime, () => taskrunner.discoverNewHosts())
 schedule.scheduleJob(config.scheduling.pingTime, () => taskrunner.pingKnownHosts())
 schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHosts())
