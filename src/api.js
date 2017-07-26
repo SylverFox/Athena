@@ -13,18 +13,28 @@ const foldsDB = db.get('campusnetdirs')
 
 
 exports.search = function(query, options) {
-	const keywords = query.split(' ').map(escape)
+	const keywords = query.split(/[^\d\w]+/g).map(escape).filter(kw => kw.length).map(kw => kw.toLowerCase())
 
 	return new Promise((resolve, reject) => {
-		filesDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 100}).then(docs => {
-			debug('results from db: '+docs.length)
-			console.log(docs)
-			var topResults = docs.sort((doc1, doc2) => {
+		let results = []
+
+		filesDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 100})
+		.then(docs => {
+			results = docs
+			debug(docs.length)
+			return foldsDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 100})
+		}).then(docs => {
+			results = results.concat(docs)
+			debug(docs.length)
+			debug(results)
+			results.sort((doc1, doc2) => {
 				levDoc1 = levenshtein.get(doc1.filename,query)
 				levDoc2 = levenshtein.get(doc2.filename,query)
 				return levDoc1 - levDoc2;
 			}).slice(0,20)
-			resolve(topResults)
+			resolve(results)
+			debug(results)
+			results = null
 		}).catch(reject)
 	})
 }

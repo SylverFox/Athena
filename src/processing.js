@@ -93,6 +93,7 @@ exports.updateOnlineStatus = function({nodes, options}) {
 exports.getNodeShareList = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
 		nodesDB.find({online: true}, '-_id ip hostname shares')
+		//nodesDB.find({online: true}, {fields: {ip: 1, hostname: 1, shares:1}, limit:2})
 		.then(docs => resolve({nodes: docs, options: options}))
 		.catch(reject)
 	})
@@ -148,7 +149,10 @@ exports.buildDirectoryIndex = function () {
 		const splitPath = this.path.slice(2).split('/')
 
 		for(let f = splitPath.length-1; f > 0; f--) {
+			const keywords = splitPath[f].split(/[^\d\w]+/g)
+				.filter(kw => kw.length).map(kw => kw.toLowerCase())
 			const dir = {
+				keywords: keywords,
 				dirname: splitPath[f],
 				path: '//'+splitPath.slice(0,f).join('/')
 			}
@@ -161,12 +165,16 @@ exports.buildDirectoryIndex = function () {
 	}
 
 	const aggregateFolders = function(collection) {
-		db.get('files_temp').aggregate([
+		tempFoldsDB.aggregate([
 			{$group: {
-				_id: {dirname: '$_id.dirname', size: '$value'},
-				dirname: {$first: '$_id.dirname'},
-				size: {$first: '$value'},
+				_id: {dirname: '$_id.dirname', size: '$value', keywords: '$_id.keywords'},
 				paths: {$push: '$_id.path'}
+			}},
+			{$project: {
+				filename: '$_id.dirname',
+				size: '$_id.size',
+				paths: '$paths',
+				keywords: '$_id.keywords'
 			}},
 			{$out: 'campusnetdirs'}
 		], {allowDiskUse: true})

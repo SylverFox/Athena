@@ -25,6 +25,7 @@
 - error if logs directory does not exists
 - check for pysmb -> EPIPE error
 - smb2 does not list complete folder contents
+- pyshell opens windows after update
 
 ## pipeline for next release
 - database optimization
