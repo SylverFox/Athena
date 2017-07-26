@@ -47,7 +47,7 @@ exports.indexKnownHosts = function(callback) {
 
 	processing.emptyFilesCache()
 	.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
-	.then(discovery.indexHosts(res))
+	.then(discovery.indexHosts)
 	.then(() => {
 		timer.done('end: index known hosts.')
 		const interval = Date.now() - startTime
