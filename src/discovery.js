@@ -8,6 +8,7 @@ const {info, warn, debug, startTimer} = winston
 const PythonShell = require('python-shell')
 
 const smbparser = require('./smb/smbparser')
+const processing = require('./processing')
 
 
 const smblogger = new (winston.Logger)({
@@ -136,7 +137,7 @@ exports.listShares = function({nodes, options}) {
 	})
 }
 
-exports.indexHosts = function({nodes, options}, datacallback) {
+exports.indexHosts = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
 		let queue = async.queue(indexShare, options.threads.network)
 		let scanresults = []
@@ -153,7 +154,7 @@ exports.indexHosts = function({nodes, options}, datacallback) {
 		}
 
 		nodes.forEach(n => n.shares.forEach(s => {
-			queue.push({node: n, share: s, datacallback: datacallback}, (err, result) => {
+			queue.push({node: n, share: s}, (err, result) => {
 				if(err)
 					warn(`timeout while scanning ${s} on ${n.hostname}`, err)
 				else {
@@ -165,7 +166,7 @@ exports.indexHosts = function({nodes, options}, datacallback) {
 	})
 }
 
-function indexShare({node, share, datacallback}, callback) {
+function indexShare({node, share}, callback) {
 	let files = 0
 	let directories = 0
 	let errors = 0
@@ -209,7 +210,9 @@ function indexShare({node, share, datacallback}, callback) {
 					files++
 					size += file.size
 					const path = res.path.replace(/\\/g, '/').slice(0, -1)
-					datacallback({node: node, share: share, path: path, file: file})
+					const data = {node: node, share: share, path: path, file: file}
+					processing.insertNewFile(data)
+						.catch(err => warn('database insertion failed', err))
 				}
 			}
 		}

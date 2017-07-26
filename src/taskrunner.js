@@ -45,16 +45,10 @@ exports.indexKnownHosts = function(callback) {
 	const timer = startTimer()
 	const startTime = Date.now()
 
-	let updates = []
-
 	processing.emptyFilesCache()
 	.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
-	.then(res => discovery.indexHosts(res, (data) => {
-		updates.push(processing.insertNewFile(data))
-	}))
-	.then(Promise.all(updates))
+	.then(discovery.indexHosts(res)
 	.then(() => {
-		updates = null // not emptying this array causes a memory leak
 		timer.done('end: index known hosts.')
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('indexKnownHosts',startTime,interval)
