@@ -32,9 +32,8 @@ keywdDB.find().each(doc => {
 const taskrunner = require('./src/taskrunner')
 const helper = require('./src/helper')
 //const taskrunner = new TaskRunner()
-
 //taskrunner.discoverNewHosts()
 //taskrunner.pingKnownHosts()
-//taskrunner.indexKnownHosts()
+taskrunner.indexKnownHosts()
 //taskrunner.postProcessing()
-taskrunner.indexStreamableContent()
+//taskrunner.indexStreamableContent()

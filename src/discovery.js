@@ -141,6 +141,7 @@ exports.listShares = function({nodes, options}) {
 }
 
 exports.indexHosts = function({nodes, options}) {
+	debug('starting indexing on '+nodes.length+' nodes')
 	return new Promise((resolve, reject) => {
 		let queue = async.queue(indexShare, options.threads.network)
 		let scanresults = []

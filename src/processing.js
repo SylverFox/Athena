@@ -127,6 +127,7 @@ exports.updateOnlineStatus = function({nodes, options}) {
 }
 
 exports.getNodeShareList = function({nodes, options}) {
+	debug('getting node sharelist')
 	return new Promise((resolve, reject) => {
 		nodesDB.find({online: true}, '-_id ip hostname shares')
 		//nodesDB.find({online: true}, {fields: {ip: 1, hostname: 1, shares:1}, limit:2})
@@ -136,7 +137,8 @@ exports.getNodeShareList = function({nodes, options}) {
 }
 
 exports.emptyFilesCache = function() {
-	return indexDB.remove({})
+	debug('emptying file cache')
+	return indexDB.drop()
 }
 
 exports.insertNewFile = function({node, share, path, file}) {
@@ -228,4 +230,39 @@ exports.buildKeywordIndex = function() {
 		{$sortByCount: '$keywords'},
 		{$out: 'keywords'}
 	], {allowDiskUse: true})
+}
+
+exports.buildStreamableIndex = function() {
+	// get: filename: '', size: 0, paths: [], keywords: []
+	// to: share: '', file: '', size: 0, type: 'video/*'
+	debug('indexing streamable content')
+
+	const seasepregex = /^s?(\d+)[\.ex_](\d+)$/i
+
+	let insertions = [streamDB.drop()]
+
+	return this.findFilesByKeywords(['game','of','thrones','mp4'])
+	.each((video, {close, pause, resume}) => {
+		pause()
+		const seasepkeyw = video.keywords.filter(kw => kw.match(seasepregex))
+		if(!seasepkeyw.length) {
+			return resume()
+		}
+		const match = seasepregex.exec(seasepkeyw)
+		const season = parseInt(match[1])
+		const episode = parseInt(match[2])
+		const fullpath = video.paths[0] + '/' + video.filename
+		const streamable = {
+			series: 'Game of Thrones',
+			season: season,
+			episode: episode,
+			location: fullpath,
+			size: video.size,
+			type: 'video/mp4'
+		}
+
+		insertions.push(streamDB.insert(streamable))
+
+		resume()
+	}).then(Promise.all(insertions))
 }

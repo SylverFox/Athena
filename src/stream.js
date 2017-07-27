@@ -19,9 +19,10 @@ module.exports = function(request, response) {
 			return response.sendStatus(404) // not found
 		}
 
-		// info for remote file
-		const sharename = doc[0].share.replace(/\//g,'\\')
-		const video = doc[0].file.replace(/\//g, '\\')
+		const location = doc[0].location.split('/')
+		const sharename = location.slice(0,4).join('\\')
+		const video = location.slice(4).join('\\')
+
 		const size = doc[0].size - 1 // skip eof
 		const type = doc[0].type
 

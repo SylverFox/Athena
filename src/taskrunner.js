@@ -74,12 +74,7 @@ exports.postProcessing = function(callback) {
 }
 
 exports.indexStreamableContent = function(callback) {
-	// get: filename: '', size: 0, paths: [], keywords: []
-	// to: share: '', file: '', size: 0, type: 'video/*'
-
-	processing.findFilesByKeywords(['mp4'])
-	.then(videos => {
-		
-	})
-	.catch(err => warn('indexing streamable content failed', err))
+	processing.buildStreamableIndex()
+	.then(() => info('done indexing streamable content'))
+	.catch(err => warn('building streamable index failed', err))
 }
