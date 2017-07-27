@@ -1,3 +1,5 @@
+// COPY THIS FILE TO config.js TO MAKE IT ACTIVE AND CHANGE IT AS NEEDED
+
 let config = require('./src/config.default');
 
 /** WEBSERVER **/
