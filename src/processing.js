@@ -1,5 +1,5 @@
 const {debug} = require('winston')
-const {MongoClient} = require('mongodb')
+const {ObjectID} = require('mongodb')
 const monk = require('monk')
 const config = require('../config')
 
@@ -13,33 +13,69 @@ const foldsDB = db.get('campusnetdirs')
 const scansDB = db.get('scans')
 const keywdDB = db.get('keywords')
 const indexDB = db.get('files')
+const streamDB = db.get('streamables')
 
 const tempFilesDB = db.get('temp_files')
 const tempFoldsDB = db.get('temp_dirs')
 
 exports.verifyExistingCollections = function() {
-	// verify existing collections
-	db.create('nodes')
-	db.create('campusnetfiles')
-	db.create('campusnetdirs')
-	db.create('scans')
-	db.create('keywords')
-	db.create('files')
-
-	// verify indexes
-	filesDB.createIndex({keywords: 1})
-	foldsDB.createIndex({keywords: 1})
-	keywdDB.createIndex({keywords: 1})
-
-
-
+	return new Promise((resolve, reject) => {
+		// verify indexes
+		scansDB.createIndex({task: 1})
+		filesDB.createIndex({keywords: 1})
+		foldsDB.createIndex({keywords: 1})
+		keywdDB.createIndex({keywords: 1})
+	})
 }
 
-exports.insertNewScan = function(task, start, runtime) {
+exports.getStreamableInfo = function(key) {
+	return streamDB.find({_id: key})
+}
+
+exports.getNodesInfo = function() {
+	return nodesDB.find({}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})
+}
+
+exports.getNodeInfo = function(name) {
+	return nodesDB.find({hostname: name}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})
+}
+
+exports.updateNodeInfo = function(scanresult) {
+	return nodesDB.update({hostname: scanresult.name, 'shares.name': scanresult.share},
+		{$set: {'shares.$.files': scanresult.files, 'shares.$.size': scanresult.size}}
+	)
+}
+
+exports.findFilesByKeywords = function(keywords) {
+	return filesDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 1000})
+}
+
+exports.findDirectoriesByKeywords = function(keywords) {
+	return foldsDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 1000})
+}
+
+exports.getLastScans = function() {
+	return scansDB.aggregate([
+		{$sort: {starttime: -1}},
+		{$group: {
+			_id: '$task',
+			task: {$first: '$task'},
+			starttime: {$first: '$starttime'},
+			runtime: {$first: '$runtime'}
+		}}
+	])
+}
+
+exports.getLastScan = function(task) {
+	return scansDB.find({task: task}, {sort: {starttime: -1}, limit: 1})
+}
+
+exports.insertNewScan = function(task, start, runtime, data) {
 	return scansDB.insert({
 		task: task,
 		starttime: start,
-		runtime: runtime
+		runtime: runtime,
+		data: data
 	})
 }
 

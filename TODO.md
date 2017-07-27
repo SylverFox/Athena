@@ -26,6 +26,7 @@
 - check for pysmb -> EPIPE error
 - smb2 does not list complete folder contents
 - pyshell opens windows after update
+- mongo timeout on postprocessing. (split mapreduce?)
 
 ## pipeline for next release
 - database optimization

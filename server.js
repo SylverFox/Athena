@@ -4,7 +4,6 @@ const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
 const winston = require('winston')
-const {MongoClient} = require('mongodb')
 const monk = require('monk')
 const responseTime = require('response-time')
 const schedule = require('node-schedule')
@@ -16,14 +15,14 @@ const api = require('./src/api')
 const helper = require('./src/helper')
 const taskrunner = require('./src/taskrunner')
 const processing = require('./src/processing')
-
+const stream = require('./src/stream')
 
 /** INIT WINSTON **/
 
 if(!fs.existsSync(config.loglocation)) fs.mkdirSync(config.loglocation)
 winston.level = config.loglevel
 winston.remove(winston.transports.Console)
-winston.add(winston.transports.Console, {colorize: true})
+winston.add(winston.transports.Console, {colorize: true, timestamp: true})
 winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'})
 
 /** INIT MONGODB **/
@@ -38,8 +37,6 @@ processing.verifyExistingCollections()
 
 db.close()
 
-
-
 /** INIT SCHEDULER **/
 
 schedule.scheduleJob(config.scheduling.discoverTime, () => taskrunner.discoverNewHosts())
@@ -50,6 +47,10 @@ schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHos
 
 const app = express()
 app.set('view engine', 'pug')
+if(app.get('env') !== 'production') {
+	app.set('view options', { pretty: true })
+	app.locals.pretty = true
+}
 app.use(express.static('public'))
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true})) 
@@ -74,17 +75,28 @@ app.post('/search', (req, res) => {
 			res.render('search', {
 				query: req.body.search,
 				helper: helper,
-				searchresults: results
+				searchresults: JSON.parse(results)
 			})
 		}).catch(err => {
-			res.status(500).send('Oopsie')
+			res.sendStatus(500)
 			winston.error('search page broke', err)
 		})
 	}
 })
 
-app.get('/stats', (req, res) => res.render('stats'))
+app.get('/stats', (req, res) => {
+	api.getStatistics().then(stats => {
+		res.render('stats', {
+			stats: JSON.parse(stats),
+			helper: helper
+		})
+	})
+	
+})
+
 app.get('/about', (req, res) => res.render('about'))
+app.get('/watch', (req, res) => res.render('watch'))
+app.get('/stream', stream)
 
 app.all('/api*', (req, res) => {
 	res.send('API has not been implemented yet!')

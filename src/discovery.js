@@ -117,6 +117,9 @@ exports.listShares = function({nodes, options}) {
 			shells.push(new PythonShell('src/python/listshares_interactive.py'))
 			shells[i].on('message', msg => {
 				const result = JSON.parse(msg)
+				debug(result)
+				result.shares = result.shares.map(r => ({name: r}))
+				debug(result)
 				nodes.find(x => x.hostname === result.hostname).shares = result.shares
 				
 				if(++found === nodes.length) {
@@ -154,7 +157,7 @@ exports.indexHosts = function({nodes, options}) {
 		}
 
 		nodes.forEach(n => n.shares.forEach(s => {
-			queue.push({node: n, share: s}, (err, result) => {
+			queue.push({node: n, share: s.name}, (err, result) => {
 				if(err)
 					warn(`timeout while scanning ${s} on ${n.hostname}`, err)
 				else {
@@ -181,6 +184,8 @@ function indexShare({node, share}, callback) {
 		session = null
 		const scanresult = {name: node.hostname, share, files, directories, errors, size}
 		debug(scanresult)
+		processing.updateNodeInfo(scanresult)
+			.catch(err => warn('database insertion failed', err))
 		callback(null, scanresult)
 	}
 

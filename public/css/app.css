@@ -15,7 +15,7 @@ body {
 	align-items: center;
 	min-height: 100vh;
 	flex-direction: column;
-	background-color: GAINSBORO;
+	background-color: white;
 }
 
 a, a:hover, a:active, a:visited {
@@ -126,4 +126,12 @@ footer {
 
 .searchcontainer {
 	flex: 1;
+}
+
+.content-block {
+	margin-bottom: 2em;
+}
+
+#videoplayer {
+	margin: auto;
 }

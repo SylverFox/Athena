@@ -1,11 +1,11 @@
-const {log, startTimer} = require('winston')
+const {info, warn, startTimer} = require('winston')
 
 const discovery = require('./discovery')
 const processing = require('./processing')
 const config = require('../config')
 
 exports.discoverNewHosts = function(callback) {
-	log('info', 'start: new host discovery.')
+	info('start: new host discovery.')
 	const timer = startTimer()
 	const startTime = Date.now()
 
@@ -19,11 +19,11 @@ exports.discoverNewHosts = function(callback) {
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('discoverNewHosts',startTime,interval)
 	})
-	.catch(err => log('warn', 'new host discovery failed.', err))
+	.catch(err => warn('new host discovery failed.', err))
 }
 
 exports.pingKnownHosts = function(callback) {
-	log('info', 'start: ping known hosts.')
+	info('start: ping known hosts.')
 	const timer = startTimer()
 	const startTime = Date.now()
 
@@ -35,11 +35,11 @@ exports.pingKnownHosts = function(callback) {
 		const interval = Date.now() - startTime
 		return processing.insertNewScan('pingKnownHosts',startTime,interval)
 	})
-	.catch(err => log('warn', 'pinging known hosts failed.', err))
+	.catch(err => warn('pinging known hosts failed.', err))
 }
 
 exports.indexKnownHosts = function(callback) {
-	log('info', 'start: index known hosts.')
+	info('start: index known hosts.')
 
 
 	const timer = startTimer()
@@ -57,10 +57,10 @@ exports.indexKnownHosts = function(callback) {
 	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)
 	.then(() => {
-		log('info', 'done postprocessing')
+		info('done postprocessing')
 		if (callback) callback()
 	})
-	.catch(err => log('warn', 'indexing known hosts failed', err))
+	.catch(err => warn('indexing known hosts failed', err))
 }
 
 exports.postProcessing = function(callback) {
@@ -68,7 +68,18 @@ exports.postProcessing = function(callback) {
 	.then(processing.buildDirectoryIndex)
 	.then(processing.buildKeywordIndex)
 	.then(() => {
-		log('info', 'done postprocessing')
+		info('done postprocessing')
 	})
-	.catch(err => log('warn', 'post processing failed', err))
+	.catch(err => warn('post processing failed', err))
+}
+
+exports.indexStreamableContent = function(callback) {
+	// get: filename: '', size: 0, paths: [], keywords: []
+	// to: share: '', file: '', size: 0, type: 'video/*'
+
+	processing.findFilesByKeywords(['mp4'])
+	.then(videos => {
+		
+	})
+	.catch(err => warn('indexing streamable content failed', err))
 }

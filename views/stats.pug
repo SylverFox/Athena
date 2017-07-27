@@ -1,4 +1,32 @@
 extends layouts/main.pug
 
 append content
-	| Nothing here yet
+	div#athenastats.content-block
+		// graph with online nodes
+		// crawl time, hosts online, total size shared
+		if stats.athenastats
+			p= 'Crawl time: '+helper.intervalToTime(stats.athenastats.runtime)
+	div#serverstats.content-block
+		// blocks with info for each server
+		// main bar has: last seen, # shares, files, size
+		// expanded content has: online graph, files graph
+		h2 Hosts statistics
+		if stats.allserverstats
+			table.table
+				thead
+					tr
+						th
+						th Hostname
+						th Last seen
+						th Indexed Files
+						th Indexed Size
+					each server in stats.allserverstats
+						tr
+							td
+							td= server.hostname
+							td= helper.timestampToLastseen(server.lastseen)
+							td= server.shares.reduce((sum, s) => sum + (s.files ? s.files : 0), 0)
+							td= helper.bytesToSize(server.shares.reduce((sum, s) => sum + (s.size ? s.size : 0), 0))
+
+
+	//replace(/\//, '\\')
