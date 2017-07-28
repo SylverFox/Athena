@@ -30,3 +30,4 @@
 
 ## pipeline for next release
 - database optimization
+- do config with .env

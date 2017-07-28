@@ -18,7 +18,7 @@ const streamDB = db.get('streamables')
 const tempFilesDB = db.get('temp_files')
 const tempFoldsDB = db.get('temp_dirs')
 
-exports.verifyExistingCollections = function() {
+exports.initDB = function() {
 	return new Promise((resolve, reject) => {
 		// verify indexes
 		scansDB.createIndex({task: 1})
@@ -38,6 +38,10 @@ exports.getNodesInfo = function() {
 
 exports.getNodeInfo = function(name) {
 	return nodesDB.find({hostname: name}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})
+}
+
+exports.getNodeCount = function() {
+	return nodesDB.count()
 }
 
 exports.updateNodeInfo = function(scanresult) {

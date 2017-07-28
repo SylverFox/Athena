@@ -27,21 +27,18 @@ winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'
 
 /** INIT MONGODB **/
 
-const {username,password,host,port,name} = config.database
-const creds = username && password ? `${username}:${password}@` : ''
-const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
-db.then(() => winston.info('connected to MongoDB'))
-db.catch(err => winston.error('error', 'failed to connect to mongodb', err))
-
-processing.verifyExistingCollections()
-
-db.close()
+processing.initDB()
+processing.getNodeCount().then((count) => {
+	if(!count) {
+		// No nodes in database, so this is probably the first run. schedula a full discovery in 5 minutes
+		taskrunner.runFullDiscovery()
+	}
+})
 
 /** INIT SCHEDULER **/
 
-schedule.scheduleJob(config.scheduling.discoverTime, () => taskrunner.discoverNewHosts())
-schedule.scheduleJob(config.scheduling.pingTime, () => taskrunner.pingKnownHosts())
-schedule.scheduleJob(config.scheduling.indexTime, () => taskrunner.indexKnownHosts())
+schedule.scheduleJob(config.scheduling.pingTime, taskrunner.pingHosts)
+schedule.scheduleJob(config.scheduling.discoverTime, taskrunner.runFullDiscovery)
 
 /** INIT EXPRESS **/
 
