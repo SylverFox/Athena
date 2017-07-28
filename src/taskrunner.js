@@ -15,6 +15,7 @@ function runTask(fn, cb) {
 		cb()
 	}).catch(err => {
 		warn('failed: '+fn.name, err)
+		timer.done('ended: '+fn.name)
 		cb()
 	})
 }
@@ -70,8 +71,8 @@ exports.runFullDiscovery = function(defer) {
 	setTimeout(() => {
 		queue.push(discoverNewHosts)
 		queue.push(pingKnownHosts)
-		queue.push(indexHosts)
-		queue.push(postprocessing)	
+		queue.push(indexKnownHosts)
+		queue.push(postProcessing)	
 	}, defer)
 }
 
