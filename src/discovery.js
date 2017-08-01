@@ -14,7 +14,7 @@ const processing = require('./processing')
 const smblogger = new (winston.Logger)({
 	level: 'debug',
 	transports: [
-		new (winston.transports.File)({filename: 'logs/smberrors.log'})
+		new (winston.transports.File)({filename: 'logs/smberrors.log', timestamp: true})
 	]
 })
 
@@ -195,18 +195,26 @@ function indexShare({node, share}, callback) {
 	// basically a wrapper for smbparser.listPath from promise to callback
 	function listFiles(path, cb) {
 		smbparser.listPath(session, path)
-			.then(res => {
-				cb(null,{path: path,files: res})
-			})
-			.catch(err => {
-				cb({path: path, error: err})
-			})
+			.then(res => cb(null, {path: path, files: res}))
+			.catch(err => cb(err, {path: path, files: null}))
 	}
 
 	function resultHandle(err, res) {
 		if(err) {
 			errors++
-			smblogger.error(node.hostname, share, err.path, err.error)
+			smblogger.error(node.hostname, share, res ? res.path : '', err)
+			// handle an error
+			if(err.code === 'STATUS_USER_SESSION_DELETED') {
+				// TODO retry?
+			} else if(err.code === 'STATUS_ACCESS_DENIED') {
+				// this is fine
+			} else if(err.code === 'STATUS_LOGON_FAILURE') {
+			} else if(err.code === 'STATUS_BAD_NETWORK_NAME') {
+			} else if(err.code === 'ETIMEDOUT') {
+				// this is fine
+			} else {
+				warn('got uknown error: ', err)
+			}
 		} else {
 			for(let file of res.files) {
 				if(file.directory) {

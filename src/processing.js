@@ -133,8 +133,8 @@ exports.updateOnlineStatus = function({nodes, options}) {
 exports.getNodeShareList = function({nodes, options}) {
 	debug('getting node sharelist')
 	return new Promise((resolve, reject) => {
-		nodesDB.find({online: true}, '-_id ip hostname shares')
-		//nodesDB.find({online: true}, {fields: {ip: 1, hostname: 1, shares:1}, limit:2})
+		//nodesDB.find({online: true}, '-_id ip hostname shares')
+		nodesDB.find({online: true, hostname:'xis'}, {fields: {ip: 1, hostname: 1, shares:1}, limit:10, skip:0})
 		.then(docs => resolve({nodes: docs, options: options}))
 		.catch(reject)
 	})

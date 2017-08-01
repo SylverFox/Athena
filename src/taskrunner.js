@@ -76,6 +76,14 @@ exports.runFullDiscovery = function(defer) {
 	}, defer)
 }
 
+exports.indexHosts = function(defer) {
+	defer = defer || 0
+
+	setTimeout(() => {
+		queue.push(indexKnownHosts)
+	}, defer)
+}
+
 exports.pingHosts = function(defer) {
 	defer = defer || 0
 

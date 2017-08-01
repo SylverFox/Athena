@@ -65,8 +65,6 @@ exports.listPath = function(client, path) {
 	})
 }
 
-exports.commonerrors = ['STATUS_ACCESS_DENIED','STATUS_LOGON_FAILURE','STATUS_BAD_NETWORK_NAME', 'ETIMEDOUT']
-
 // TODO list shares of host
 
 function isDirectory(file) {

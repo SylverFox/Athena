@@ -17,13 +17,13 @@ except IndexError:
 	print 'usage: sharetree.py target share path'
 	sys.exit(1)
 
-conn = SMBConnection('guest@'+target, '', 'Athena', target, '', True, 2, True)
+conn = SMBConnection('guest', '', 'Athena', target, '', True, 1, True)
 try:
 	conn.connect(target, 445)
 	listing = conn.listPath(share, path)
-except:
+except Exception as err:
 	# target refused connection
-	print []
+	print err
 	exit()
 
 

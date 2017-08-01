@@ -23,7 +23,7 @@ if(!fs.existsSync(config.loglocation)) fs.mkdirSync(config.loglocation)
 winston.level = config.loglevel
 winston.remove(winston.transports.Console)
 winston.add(winston.transports.Console, {colorize: true, timestamp: true})
-winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log'})
+winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log', timestamp: true})
 
 /** INIT MONGODB **/
 
