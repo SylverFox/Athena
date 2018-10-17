@@ -1,39 +1,50 @@
 'use strict'
 
+require('console.table')
+const fs = require('fs')
+const ini = require('ini')
+const winston = require('winston')
+
 const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
-const winston = require('winston')
-const monk = require('monk')
 const responseTime = require('response-time')
 const schedule = require('node-schedule')
-const fs = require('fs')
-require('console.table')
 
-const config = require('./config')
-const api = require('./src/api')
-const helper = require('./src/helper')
-const taskrunner = require('./src/taskrunner')
-const processing = require('./src/processing')
-const stream = require('./src/stream')
+//const api = require('./src/api')
+//const helper = require('./src/helper')
+//const taskrunner = require('./src/taskrunner')
+const Processing = require('./src/processing')
+//const stream = require('./src/stream')
 
-/** INIT WINSTON **/
+/* INIT CONFIG */
+let config
+try {
+	config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'))
+} catch (err) {
+	console.error('no config file found!')
+	process.exit()
+}
 
-if(!fs.existsSync(config.loglocation)) fs.mkdirSync(config.loglocation)
-winston.level = config.loglevel
+/* INIT WINSTON */
+if(!fs.existsSync(config.logging.location))
+	fs.mkdirSync(config.logging.location)
+winston.level = config.logging.level
 winston.remove(winston.transports.Console)
 winston.add(winston.transports.Console, {colorize: true, timestamp: true})
-winston.add(winston.transports.File, {filename: config.loglocation+'/athena.log', timestamp: true})
+winston.add(winston.transports.File, {filename: config.logging.location+'/athena.log', timestamp: true})
 
-/** INIT MONGODB **/
-
-processing.initDB()
+/** INIT NeDB **/
+const processor = new Processing(config)
+/*
+processing.integrityCheck()
 processing.getNodeCount().then((count) => {
 	if(!count) {
-		// No nodes in database, so this is probably the first run. schedula a full discovery in 5 minutes
+		// No nodes in database, so this is probably the first run. schedule a full discovery in 5 minutes
 		taskrunner.runFullDiscovery()
 	}
 })
+*/
 
 /** INIT SCHEDULER **/
 

@@ -14,7 +14,7 @@ try:
 	share = sys.argv[2]
 	path = sys.argv[3]
 except IndexError:
-	print 'usage: sharetree.py target share path'
+	print 'usage: listpath.py target share path'
 	sys.exit(1)
 
 conn = SMBConnection('guest', '', 'Athena', target, '', True, 1, True)

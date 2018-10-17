@@ -1,36 +1,24 @@
 const {debug} = require('winston')
-const {ObjectID} = require('mongodb')
-const monk = require('monk')
-const config = require('../config')
+const config = require('config')
+const NeDB = require('nedb-promises')
 
-const {username,password,host,port,name} = config.database
-const creds = username && password ? `${username}:${password}@` : ''
-const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
+let db = {}
+db.nodes = NeDB.create({filename: config.database.location+'nodes.db/'})
+db.files = NeDB.create({filename: config.database.location+'campusnetfiles.db/'})
+db.folds = NeDB.create({filename: config.database.location+'campusnetdirs.db/'})
+db.scans = NeDB.create({filename: config.database.location+'scans.db/'})
+db.keywd = NeDB.create({filename: config.database.location+'keywords.db/'})
+db.index = NeDB.create({filename: config.database.location+'files.db/'})
+db.stream = NeDB.create({filename: config.database.location+'streamables.db/'})
+db.tempfiles = NeDB.create({filename: config.database.location+'temp_files.db/'})
+db.tempFolds = NeDB.create({filename: config.database.location+'temp_dirs.db/'})
 
-const nodesDB = db.get('nodes')
-const filesDB = db.get('campusnetfiles')
-const foldsDB = db.get('campusnetdirs')
-const scansDB = db.get('scans')
-const keywdDB = db.get('keywords')
-const indexDB = db.get('files')
-const streamDB = db.get('streamables')
-
-const tempFilesDB = db.get('temp_files')
-const tempFoldsDB = db.get('temp_dirs')
-
-exports.initDB = function() {
-	return new Promise((resolve, reject) => {
-		// verify indexes
-		scansDB.createIndex({task: 1})
-		filesDB.createIndex({keywords: 1})
-		foldsDB.createIndex({keywords: 1})
-		keywdDB.createIndex({keywords: 1})
-	})
+exports.integrityCheck = function() {
+	debug('Integrity check not implemented')
+	// TODO ensure indexes etc.
 }
 
-exports.getStreamableInfo = function(key) {
-	return streamDB.find({_id: key})
-}
+exports.getStreamableInfo = (key) => streamDB.find({_id: key})
 
 exports.getNodesInfo = function() {
 	return nodesDB.find({}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})

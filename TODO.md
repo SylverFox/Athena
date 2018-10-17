@@ -7,6 +7,7 @@
 - script to detect url handler
 - FTP indexing -> npm install --save ftp
 - pure javascript implementation of SMB
+- Embedded DBMS -> https://github.com/louischatriot/nedb
 
 ## minor features
 - schedule task on first startup (populate database on first run)
@@ -20,6 +21,7 @@
 - custom error pages
 - stats page, look at https://d3js.org
 - google analytics
+- better config -> https://www.npmjs.com/package/config
 
 ## bugs
 - error if logs directory does not exists

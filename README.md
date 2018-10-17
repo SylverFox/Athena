@@ -7,7 +7,6 @@ Search engine and indexer for network shares on CampusNet
 ### Prerequisites
 
 - [Node](https://nodejs.org), 6.11 or higher
-- [MongoDB](https://www.mongodb.com), make sure it is up and running
 - [Python](https://www.python.org) and the [pysmb](https://pythonhosted.org/pysmb/) package
 
 If you have pip on your system, the easiest way to install pysmb is
