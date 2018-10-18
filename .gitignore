@@ -1,6 +1,8 @@
 # Logs
-logs
+logs/
+db/
 *.log
+*.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -16,6 +18,9 @@ node_modules/
 
 # dotenv environment variables file
 .env
+
+# VS Code configs
+.vscode/
 
 # dev test class
 test.js

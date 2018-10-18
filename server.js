@@ -1,30 +1,23 @@
 'use strict'
 
-require('console.table')
 const fs = require('fs')
-const ini = require('ini')
 const winston = require('winston')
-
+const config = require('config')
 const express = require('express')
 const ipRangeCheck = require('ip-range-check')
 const bodyParser = require('body-parser')
 const responseTime = require('response-time')
 const schedule = require('node-schedule')
 
-//const api = require('./src/api')
-//const helper = require('./src/helper')
-//const taskrunner = require('./src/taskrunner')
-const Processing = require('./src/processing')
-//const stream = require('./src/stream')
+const taskrunner = require('./src/taskrunner')
+const api = require('./src/api')
+const stream = require('./src/stream')
+const helper = require('./src/helper')
 
-/* INIT CONFIG */
-let config
-try {
-	config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'))
-} catch (err) {
-	console.error('no config file found!')
-	process.exit()
-}
+// init NeDB
+const processing = require('./src/processing')
+
+
 
 /* INIT WINSTON */
 if(!fs.existsSync(config.logging.location))
@@ -34,8 +27,6 @@ winston.remove(winston.transports.Console)
 winston.add(winston.transports.Console, {colorize: true, timestamp: true})
 winston.add(winston.transports.File, {filename: config.logging.location+'/athena.log', timestamp: true})
 
-/** INIT NeDB **/
-const processor = new Processing(config)
 /*
 processing.integrityCheck()
 processing.getNodeCount().then((count) => {
@@ -83,7 +74,7 @@ app.post('/search', (req, res) => {
 			res.render('search', {
 				query: req.body.search,
 				helper: helper,
-				searchresults: JSON.parse(results)
+				searchresults: results
 			})
 		}).catch(err => {
 			res.sendStatus(500)
@@ -95,7 +86,7 @@ app.post('/search', (req, res) => {
 app.get('/stats', (req, res) => {
 	api.getStatistics().then(stats => {
 		res.render('stats', {
-			stats: JSON.parse(stats),
+			stats: stats,
 			helper: helper
 		})
 	})
@@ -108,6 +99,7 @@ app.get('/stream', stream)
 
 app.all('/api*', (req, res) => {
 	res.send('API has not been implemented yet!')
+	// TODO
 })
 
 app.listen(config.webserver.port, () =>

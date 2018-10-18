@@ -1,9 +1,9 @@
 const {info, warn, startTimer} = require('winston')
 const async = require('async')
+const config = require('config')
 
 const discovery = require('./discovery')
 const processing = require('./processing')
-const config = require('../config')
 
 let queue = async.queue(runTask, 1)
 
@@ -39,16 +39,16 @@ function pingKnownHosts() {
 	return processing.getNodeIPList({nodes: null, options: config.discovery})
 	.then(discovery.ping)
 	.then(processing.updateOnlineStatus)
-	.then(() => processing.insertNewScan('pingKnownHosts', startTime, Date.now() - startTime))
+	.then(processing.insertNewScan('pingKnownHosts', startTime, Date.now() - startTime))
 }
 
 function indexKnownHosts() {
 	const startTime = Date.now()
 
 	return processing.emptyFilesCache()
-	.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
-	.then(discovery.indexHosts)
-	.then(() => processing.insertNewScan('indexKnownHosts', startTime, Date.now() - startTime))
+		.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
+		.then(discovery.indexHosts)
+		.then(() => processing.insertNewScan('indexKnownHosts', startTime, Date.now() - startTime))
 }
 
 function postProcessing() {

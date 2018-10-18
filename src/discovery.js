@@ -141,7 +141,8 @@ exports.listShares = function({nodes, options}) {
 }
 
 exports.indexHosts = function({nodes, options}) {
-	debug('starting indexing on '+nodes.length+' nodes')
+	debug('starting indexing on '+(nodes || []).length+' nodes')
+
 	return new Promise((resolve, reject) => {
 		let queue = async.queue(indexShare, options.threads.network)
 		let scanresults = []
@@ -210,10 +211,12 @@ function indexShare({node, share}, callback) {
 				// this is fine
 			} else if(err.code === 'STATUS_LOGON_FAILURE') {
 			} else if(err.code === 'STATUS_BAD_NETWORK_NAME') {
+			} else if(err.code === 'STATUS_NO_LOGON_SERVERS') {
+			} else if(err.code === 'STATUS_OBJECT_NAME_NOT_FOUND') {
 			} else if(err.code === 'ETIMEDOUT') {
 				// this is fine
 			} else {
-				warn('got uknown error: ', err)
+				warn('got unknown error: ', err)
 			}
 		} else {
 			for(let file of res.files) {

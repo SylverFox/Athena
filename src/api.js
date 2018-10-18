@@ -1,17 +1,8 @@
-const monk = require('monk')
 const levenshtein = require('fast-levenshtein');
 const {debug} = require('winston')
+const config = require('config')
 
-const config = require('../config')
 const processing = require('./processing')
-
-const {username,password,host,port,name} = config.database
-const creds = username && password ? `${username}:${password}@` : ''
-const db = monk(`mongodb://${creds}${host}:${port}/${name}`, {})
-const nodesDB = db.get('nodes')
-const filesDB = db.get('campusnetfiles')
-const foldsDB = db.get('campusnetdirs')
-
 
 exports.search = function(query, options) {
 	const keywords = query.split(/[^\d\w]+/g).map(escape).filter(kw => kw.length).map(kw => kw.toLowerCase())
@@ -47,20 +38,13 @@ exports.getStatistics = function() {
 		]
 
 		Promise.all(promises).then(res => {
-			resolve(JSON.stringify({
-				athenastats: JSON.parse(res[0]),
-				allserverstats: JSON.parse(res[1])
-			}))
+			resolve({athenastats: res[0], allserverstats: res[1]})
 		}).catch(reject)
 	})
 }
 
 exports.athenaStats = function() {
-	return new Promise((resolve, reject) => {
-		processing.getLastScan('indexKnownHosts')
-		.then(doc => resolve(JSON.stringify(doc[0])))
-		.catch(reject)
-	})
+	return processing.getLastScan('indexKnownHosts')
 }
 
 exports.serverStats = function(options) {
@@ -70,7 +54,7 @@ exports.serverStats = function(options) {
 	return new Promise((resolve, reject) => {
 		const promise = options.hostname ? processing.getNodeInfo(options.hostname) : processing.getNodesInfo()
 
-		promise.then(docs => resolve(JSON.stringify(docs))).catch(reject)
+		promise.then(resolve).catch(reject)
 	})
 }
 

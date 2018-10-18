@@ -15,7 +15,7 @@ body {
 	align-items: center;
 	min-height: 100vh;
 	flex-direction: column;
-	background-color: white;
+	background-color: GAINSBORO;
 }
 
 a, a:hover, a:active, a:visited {

@@ -3,51 +3,51 @@ const config = require('config')
 const NeDB = require('nedb-promises')
 
 let db = {}
-db.nodes = NeDB.create({filename: config.database.location+'nodes.db/'})
-db.files = NeDB.create({filename: config.database.location+'campusnetfiles.db/'})
-db.folds = NeDB.create({filename: config.database.location+'campusnetdirs.db/'})
-db.scans = NeDB.create({filename: config.database.location+'scans.db/'})
-db.keywd = NeDB.create({filename: config.database.location+'keywords.db/'})
-db.index = NeDB.create({filename: config.database.location+'files.db/'})
-db.stream = NeDB.create({filename: config.database.location+'streamables.db/'})
-db.tempfiles = NeDB.create({filename: config.database.location+'temp_files.db/'})
-db.tempFolds = NeDB.create({filename: config.database.location+'temp_dirs.db/'})
+db.nodes = NeDB.create({filename: config.get('database.location')+'nodes.db', timestampData: true})
+db.shares = NeDB.create({filename: config.get('database.location')+'shares.db'})
+db.files = NeDB.create({filename: config.get('database.location')+'campusnetfiles.db'})
+db.folds = NeDB.create({filename: config.get('database.location')+'campusnetdirs.db'})
+db.scans = NeDB.create({filename: config.get('database.location')+'scans.db'})
+db.keywd = NeDB.create({filename: config.get('database.location')+'keywords.db'})
+db.index = NeDB.create({filename: config.get('database.location')+'files.db'})
+db.stream = NeDB.create({filename: config.get('database.location')+'streamables.db'})
+db.tempfiles = NeDB.create({filename: config.get('database.location')+'temp_files.db'})
+db.tempFolds = NeDB.create({filename: config.get('database.location')+'temp_dirs.db'})
 
-exports.integrityCheck = function() {
-	debug('Integrity check not implemented')
-	// TODO ensure indexes etc.
-}
+// TODO ensure indexes
 
-exports.getStreamableInfo = (key) => streamDB.find({_id: key})
+exports.getStreamableInfo = (key) => db.stream.find({_id: key})
 
 exports.getNodesInfo = function() {
-	return nodesDB.find({}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})
+	return db.nodes.find({}, {fields: {hostname: 1, lastseen: 1, shares: 1}})
 }
 
 exports.getNodeInfo = function(name) {
-	return nodesDB.find({hostname: name}, {fields: {_id: 0, hostname: 1, lastseen: 1, shares: 1}})
+	return db.nodes.findOne({hostname: name}, {fields: {hostname: 1, lastseen: 1, shares: 1}})
 }
 
 exports.getNodeCount = function() {
-	return nodesDB.count()
+	return db.nodes.count()
 }
 
-exports.updateNodeInfo = function(scanresult) {
-	return nodesDB.update({hostname: scanresult.name, 'shares.name': scanresult.share},
-		{$set: {'shares.$.files': scanresult.files, 'shares.$.size': scanresult.size}}
+exports.updateShareInfo = function(scanresult) {
+	return db.shares.update(
+		{hostname: scanresult.name, sharename: scanresult.share},
+		{$set: {files: scanresult.files, size: scanresult.size}},
+		{$upsert: true}
 	)
 }
 
 exports.findFilesByKeywords = function(keywords) {
-	return filesDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 1000})
+	return db.files.find({keywords: {$all: keywords}}, {limit: 100})
 }
 
 exports.findDirectoriesByKeywords = function(keywords) {
-	return foldsDB.find({keywords: {$all: keywords}}, {fields: {_id: 0}, limit: 1000})
+	return db.folds.find({keywords: {$all: keywords}}, {limit: 100})
 }
 
 exports.getLastScans = function() {
-	return scansDB.aggregate([
+	return db.scans.aggregate([
 		{$sort: {starttime: -1}},
 		{$group: {
 			_id: '$task',
@@ -59,11 +59,11 @@ exports.getLastScans = function() {
 }
 
 exports.getLastScan = function(task) {
-	return scansDB.find({task: task}, {sort: {starttime: -1}, limit: 1})
+	return db.scans.findOne({task: task}, {sort: {starttime: -1}})
 }
 
 exports.insertNewScan = function(task, start, runtime, data) {
-	return scansDB.insert({
+	return db.scans.insert({
 		task: task,
 		starttime: start,
 		runtime: runtime,
@@ -75,11 +75,11 @@ exports.appendNewNodes = function({nodes, options}) {
 	let promises = []
 	nodes.forEach((node, index) => {
 		promises.push(
-			nodesDB.update(
+			db.nodes.update(
 				{ip: node.ip},
 				{
 					$set: node,
-					$setOnInsert: {firstseen:Date.now(), seen:[Date.now()], lastseen:Date.now()}
+					$push: {seen: new Date()}
 				},
 				{upsert: true}
 			)
@@ -91,7 +91,7 @@ exports.appendNewNodes = function({nodes, options}) {
 
 exports.getNodeIPList = function({nodes, options}) {
 	return new Promise((resolve, reject) => {
-		nodesDB.find({}, 'ip -_id').then(docs => {
+		db.nodes.find({}, {ip: 1}).then(docs => {
 			resolve({nodes: docs, options: options})
 		}).catch(reject)
 	})
@@ -103,13 +103,13 @@ exports.updateOnlineStatus = function({nodes, options}) {
 	nodes.forEach((node, index) => {
 		if(node.online) {
 			promises.push(
-				nodesDB.update({ip: node.ip},
-					{$set: {online: true, lastseen: Date.now()}, $addToSet: {seen: Date.now()}}
+				db.nodes.update({ip: node.ip},
+					{$set: {online: true}, $push: {seen: new Date()}}
 				)
 			)
 		} else {
 			promises.push(
-				nodesDB.update({ip: node.ip}, {$set: {online: false}})
+				db.nodes.update({ip: node.ip}, {$set: {online: false}})
 			)
 		}
 		
@@ -121,16 +121,16 @@ exports.updateOnlineStatus = function({nodes, options}) {
 exports.getNodeShareList = function({nodes, options}) {
 	debug('getting node sharelist')
 	return new Promise((resolve, reject) => {
-		//nodesDB.find({online: true}, '-_id ip hostname shares')
-		nodesDB.find({online: true, hostname:'xis'}, {fields: {ip: 1, hostname: 1, shares:1}, limit:10, skip:0})
-		.then(docs => resolve({nodes: docs, options: options}))
-		.catch(reject)
+		db.nodes.find({online: true}, {ip: 1, hostname: 1, shares: 1})
+		//db.nodes.find({online: true, hostname:'xis'}).projection({ip: 1, hostname: 1, shares:1}).limit(10).skip(0)
+			.then(docs => resolve({nodes: docs, options: options}))
+			.catch(reject)
 	})
 }
 
 exports.emptyFilesCache = function() {
 	debug('emptying file cache')
-	return indexDB.drop()
+	return db.index.remove({}, {multi: true})
 }
 
 exports.insertNewFile = function({node, share, path, file}) {
@@ -140,7 +140,7 @@ exports.insertNewFile = function({node, share, path, file}) {
 		path: '//' + node.hostname + '/' + share + '/' + path
 	}
 
-	return indexDB.insert(fileToInsert)
+	return db.index.insert(fileToInsert)
 }
 
 exports.buildFileIndex = function() {
@@ -158,7 +158,7 @@ exports.buildFileIndex = function() {
 	}
 
 	const aggregateFiles = function(collection) {
-		tempFilesDB.aggregate([
+		tempdb.files.aggregate([
 			{$project: {
 				filename: '$_id.filename',
 				size: '$_id.size',
@@ -169,7 +169,7 @@ exports.buildFileIndex = function() {
 		], {allowDiskUse: true})
 	}
 
-	return indexDB.mapReduce(mapFiles, reduceFiles, {out: {replace: 'temp_files'}}).then(aggregateFiles)
+	return db.index.mapReduce(mapFiles, reduceFiles, {out: {replace: 'temp_files'}}).then(aggregateFiles)
 }
 
 exports.buildDirectoryIndex = function () {
@@ -195,7 +195,7 @@ exports.buildDirectoryIndex = function () {
 	}
 
 	const aggregateFolders = function(collection) {
-		tempFoldsDB.aggregate([
+		tempdb.folds.aggregate([
 			{$group: {
 				_id: {dirname: '$_id.dirname', size: '$value', keywords: '$_id.keywords'},
 				paths: {$push: '$_id.path'}
@@ -210,13 +210,13 @@ exports.buildDirectoryIndex = function () {
 		], {allowDiskUse: true})
 	}
 
-	return indexDB.mapReduce(mapFolders, reduceFolders, {out: {replace: 'temp_dirs'}}).then(aggregateFolders)
+	return db.index.mapReduce(mapFolders, reduceFolders, {out: {replace: 'temp_dirs'}}).then(aggregateFolders)
 }
 
 exports.buildKeywordIndex = function() {
 	debug('building keyword index')
 	// todo recode with more splits
-	return indexDB.aggregate([
+	return db.index.aggregate([
 		{$project: {keywords: {$split: [{$toLower: '$filename'}, '.']}}},
 		{$unwind: '$keywords'},
 		{$sortByCount: '$keywords'},
@@ -231,7 +231,7 @@ exports.buildStreamableIndex = function() {
 
 	const seasepregex = /^s?(\d+)[\.ex_](\d+)$/i
 
-	let insertions = [streamDB.drop()]
+	let insertions = [db.stream.drop()]
 
 	return this.findFilesByKeywords(['game','of','thrones','mp4'])
 	.each((video, {close, pause, resume}) => {
@@ -253,7 +253,7 @@ exports.buildStreamableIndex = function() {
 			type: 'video/mp4'
 		}
 
-		insertions.push(streamDB.insert(streamable))
+		insertions.push(db.stream.insert(streamable))
 
 		resume()
 	}).then(Promise.all(insertions))
