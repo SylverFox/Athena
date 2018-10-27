@@ -3,50 +3,122 @@ const config = require('config')
 const NeDB = require('nedb-promises')
 
 let db = {}
-db.nodes = NeDB.create({filename: config.get('database.location')+'nodes.db', timestampData: true})
+// load collections
+db.hosts = NeDB.create({filename: config.get('database.location')+'hosts.db'})
 db.shares = NeDB.create({filename: config.get('database.location')+'shares.db'})
-db.files = NeDB.create({filename: config.get('database.location')+'campusnetfiles.db'})
-db.folds = NeDB.create({filename: config.get('database.location')+'campusnetdirs.db'})
+db.files = NeDB.create({filename: config.get('database.location')+'files.db'})
 db.scans = NeDB.create({filename: config.get('database.location')+'scans.db'})
-db.keywd = NeDB.create({filename: config.get('database.location')+'keywords.db'})
-db.index = NeDB.create({filename: config.get('database.location')+'files.db'})
-db.stream = NeDB.create({filename: config.get('database.location')+'streamables.db'})
-db.tempfiles = NeDB.create({filename: config.get('database.location')+'temp_files.db'})
-db.tempFolds = NeDB.create({filename: config.get('database.location')+'temp_dirs.db'})
+db.keywords = NeDB.create({filename: config.get('database.location')+'keywords.db'})
 
-// TODO ensure indexes
+// ensure indexes on collections
+db.hosts.ensureIndex({fieldName: 'ip', unique: true})
+db.hosts.ensureIndex({fieldName: 'hostname', unique: true})
+db.shares.ensureIndex({fieldName: 'hostId', unique: true})
+db.shares.ensureIndex({fieldName: 'sharename', unique: true})
+db.files.ensureIndex({fieldName: 'shareId', unique: true})
+db.files.ensureIndex({fieldName: 'filename'})
 
-exports.getStreamableInfo = (key) => db.stream.find({_id: key})
-
-exports.getNodesInfo = function() {
-	return db.nodes.find({}, {fields: {hostname: 1, lastseen: 1, shares: 1}})
+/**
+ * Splits a filename into specific parts so they can be used by search
+ * @param {string} filename 
+ */
+function extractKeywords(filename) {
+	// TODO
+	debug('extract keywords not implemented')
 }
 
-exports.getNodeInfo = function(name) {
-	return db.nodes.findOne({hostname: name}, {fields: {hostname: 1, lastseen: 1, shares: 1}})
-}
+/**
+ * Returns the host with the specified Id
+ * @param {string} hostId
+ */
+exports.findHostById = hostId => db.hosts.findOne({_id: hostId})
 
-exports.getNodeCount = function() {
-	return db.nodes.count()
-}
+/**
+ * Return the host with the specified hostname
+ * @param {string} hostname
+ */
+exports.findHostByName = hostname => db.hosts.findOne({hostname})
 
-exports.updateShareInfo = function(scanresult) {
-	return db.shares.update(
-		{hostname: scanresult.name, sharename: scanresult.share},
-		{$set: {files: scanresult.files, size: scanresult.size}},
-		{$upsert: true}
-	)
-}
+/**
+ * Returns all known hosts
+ */
+exports.findHosts = () => db.hosts.find({})
 
-exports.findFilesByKeywords = function(keywords) {
-	return db.files.find({keywords: {$all: keywords}}, {limit: 100})
-}
+/**
+ * Returns all online hosts. Hosts are considered online when they were last seen in the past 10 minutes
+ */
+exports.findOnlineHosts = () => db.hosts.find({lastseen: {$gt: new Date(Date.now() - 10 * 60000)}})
 
-exports.findDirectoriesByKeywords = function(keywords) {
-	return db.folds.find({keywords: {$all: keywords}}, {limit: 100})
-}
+/**
+ * Returns the number of hosts in the database
+ */
+exports.findHostCount = () => db.hosts.count()
 
-exports.getLastScans = function() {
+/**
+ * Updates the last time seen of the host with the specified ip with the current date
+ * @param {string} ip
+ */
+exports.updateLastseen = ip => db.hosts.update({ip}, {$set: {lastseen: new Date()}})
+
+/**
+ * Upserts a host with its info and the current time
+ * @param {object} host
+ */
+exports.upsertHost = host => db.hosts.update(
+	{ip: host.ip},
+	{$set: {hostname: host.hostname, ip: host.ip, lastseen: new Date()}},
+	{upsert: true}
+)
+
+/**
+ * Upserts multiple hosts
+ * @param {object[]} hosts
+ */
+exports.upsertHosts = hosts => Promise.all(hosts.map(exports.upsertHost))
+
+/**
+ * Finds a share by the specified ID
+ * @param {string} shareId
+ */
+exports.findShareById = shareId => db.shares.findOne({_id: shareId})
+
+/**
+ * Finds a share by the specified name
+ * @param {string} sharename
+ */
+exports.findShareByName = sharename => db.shares.findOne({sharename})
+
+/**
+ * Upserts a share with the given share object
+ * @param {object} share
+ */
+exports.upsertShare = share => db.shares.update(
+	{hostId: share.hostid, sharename: share.sharename},
+	{$set: {filecount: share.filecount, size: share.size}},
+	{$upsert: true}
+)
+
+
+
+
+
+
+
+// TODO improve for partial match
+exports.findFilesByKeywords = keywords => db.files.find({$and: keywords.map(kw => {keywords: kw})}, {limit: 100})
+exports.insertFile = (host, share, file) => db.files.insert({
+	shareId: share.id,
+	filename: file.filename,
+	path: '//' + host.hostname + '/' + share + '/' + file.path,
+	size: file.size, 
+	isDirectory: file.isDirectory, 
+	keywords: extractKeywords(filename)
+})
+exports.removeFile = (share, file) => db.files.remove({shareId: share.id, filename: file.filename})
+
+exports.getLastScanByTask = task => db.scans.findOne({task: task}, {sort: {starttime: -1}})
+// TODO NeDB does not support aggregate
+exports.getLastScans = () => {
 	return db.scans.aggregate([
 		{$sort: {starttime: -1}},
 		{$group: {
@@ -58,91 +130,15 @@ exports.getLastScans = function() {
 	])
 }
 
-exports.getLastScan = function(task) {
-	return db.scans.findOne({task: task}, {sort: {starttime: -1}})
-}
+exports.insertScan = (task, starttime, runtime, data) => db.scans.insert({task, starttime, runtime, data})
 
-exports.insertNewScan = function(task, start, runtime, data) {
-	return db.scans.insert({
-		task: task,
-		starttime: start,
-		runtime: runtime,
-		data: data
-	})
-}
 
-exports.appendNewNodes = function({nodes, options}) {
-	let promises = []
-	nodes.forEach((node, index) => {
-		promises.push(
-			db.nodes.update(
-				{ip: node.ip},
-				{
-					$set: node,
-					$push: {seen: new Date()}
-				},
-				{upsert: true}
-			)
-		)
-	})
 
-	return Promise.all(promises)
-}
 
-exports.getNodeIPList = function({nodes, options}) {
-	return new Promise((resolve, reject) => {
-		db.nodes.find({}, {ip: 1}).then(docs => {
-			resolve({nodes: docs, options: options})
-		}).catch(reject)
-	})
-}
 
-exports.updateOnlineStatus = function({nodes, options}) {
-	let promises = []
 
-	nodes.forEach((node, index) => {
-		if(node.online) {
-			promises.push(
-				db.nodes.update({ip: node.ip},
-					{$set: {online: true}, $push: {seen: new Date()}}
-				)
-			)
-		} else {
-			promises.push(
-				db.nodes.update({ip: node.ip}, {$set: {online: false}})
-			)
-		}
-		
-	})
 
-	return Promise.all(promises)
-}
-
-exports.getNodeShareList = function({nodes, options}) {
-	debug('getting node sharelist')
-	return new Promise((resolve, reject) => {
-		db.nodes.find({online: true}, {ip: 1, hostname: 1, shares: 1})
-		//db.nodes.find({online: true, hostname:'xis'}).projection({ip: 1, hostname: 1, shares:1}).limit(10).skip(0)
-			.then(docs => resolve({nodes: docs, options: options}))
-			.catch(reject)
-	})
-}
-
-exports.emptyFilesCache = function() {
-	debug('emptying file cache')
-	return db.index.remove({}, {multi: true})
-}
-
-exports.insertNewFile = function({node, share, path, file}) {
-	const fileToInsert = {
-		filename: file.filename,
-		size: file.size,
-		path: '//' + node.hostname + '/' + share + '/' + path
-	}
-
-	return db.index.insert(fileToInsert)
-}
-
+// TODO deprecated
 exports.buildFileIndex = function() {
 	debug('building file index')
 
@@ -172,6 +168,7 @@ exports.buildFileIndex = function() {
 	return db.index.mapReduce(mapFiles, reduceFiles, {out: {replace: 'temp_files'}}).then(aggregateFiles)
 }
 
+// TODO deprecated
 exports.buildDirectoryIndex = function () {
 	debug('building directory index')
 
@@ -213,6 +210,8 @@ exports.buildDirectoryIndex = function () {
 	return db.index.mapReduce(mapFolders, reduceFolders, {out: {replace: 'temp_dirs'}}).then(aggregateFolders)
 }
 
+
+// TODO deprecated
 exports.buildKeywordIndex = function() {
 	debug('building keyword index')
 	// todo recode with more splits
@@ -224,37 +223,3 @@ exports.buildKeywordIndex = function() {
 	], {allowDiskUse: true})
 }
 
-exports.buildStreamableIndex = function() {
-	// get: filename: '', size: 0, paths: [], keywords: []
-	// to: share: '', file: '', size: 0, type: 'video/*'
-	debug('indexing streamable content')
-
-	const seasepregex = /^s?(\d+)[\.ex_](\d+)$/i
-
-	let insertions = [db.stream.drop()]
-
-	return this.findFilesByKeywords(['game','of','thrones','mp4'])
-	.each((video, {close, pause, resume}) => {
-		pause()
-		const seasepkeyw = video.keywords.filter(kw => kw.match(seasepregex))
-		if(!seasepkeyw.length) {
-			return resume()
-		}
-		const match = seasepregex.exec(seasepkeyw)
-		const season = parseInt(match[1])
-		const episode = parseInt(match[2])
-		const fullpath = video.paths[0] + '/' + video.filename
-		const streamable = {
-			series: 'Game of Thrones',
-			season: season,
-			episode: episode,
-			location: fullpath,
-			size: video.size,
-			type: 'video/mp4'
-		}
-
-		insertions.push(db.stream.insert(streamable))
-
-		resume()
-	}).then(Promise.all(insertions))
-}

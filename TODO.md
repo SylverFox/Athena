@@ -22,6 +22,7 @@
 - stats page, look at https://d3js.org
 - google analytics
 - better config -> https://www.npmjs.com/package/config
+- NeDB scheduled compacting db
 
 ## bugs
 - error if logs directory does not exists
