@@ -1,16 +1,22 @@
-const netping = require('net-ping')
-const async = require('async')
 const dns = require('dns')
-const {spawn} = require("child_process")
+const util = require('util')
+
+const config = require('config')
+const tcpping = require('tcp-ping')
+const async = require('async')
+const PQueue = require('p-queue')
+
 const iprange = require('iprange')
 const winston = require('winston')
-const {info, warn, debug, startTimer} = winston
+const {warn, debug} = winston
 const PythonShell = require('python-shell')
 
 const smbparser = require('./smb/smbparser')
 const processing = require('./processing')
 
+const OPTS = config.discovery
 
+// custom logger for errors in smb scanning
 const smblogger = new (winston.Logger)({
 	level: 'debug',
 	transports: [
@@ -18,133 +24,134 @@ const smblogger = new (winston.Logger)({
 	]
 })
 
-// prepares objects for the discovery pipeline based on the options given
-exports.build = function(options) {
-	return new Promise((resolve, reject) => {
-		if(!options) {
-			reject('no options given')
-			return
-		} else if(!options.range) {
-			reject('options must have a range parameter')
-			return
-		}
+// promisified version of the tcp ping function
+const pingHost = util.promisify(tcpping.ping)
+// promisified version of dns.reverse
+const dnsReverse = util.promisify(dns.reverse)
 
-		options.threads = options.threads || {}
-		if(!options.threads.network)
-			warn('no network threads specified')
-		if(!options.threads.script)
-			warn('no script threads specified')
-		options.minimize = options.minimize || true
-		
-		const nodes = iprange(options.range).map(ip => ({ip: ip}))
-		resolve({nodes: nodes, options: options})
-		debug(`finished building. ${nodes.length} nodes left`)
-	})
-}
+/**
+ * prepares objects for the discovery pipeline based on the iprange in the config
+ */
+exports.build = async () => iprange(OPTS.range).map(ip => ({ip: ip}))
 
-// pings nodes and updates their online status
-exports.ping = function({nodes, options}) {
-	// most server on cnet respond <2 ms, so 100 ms must be sufficient
-	let session = netping.createSession({timeout: 100})
+/**
+ * Pings the given hosts on the specified port to check if it is online and the port is accessible
+ * Returns a promise that is resolved when all hosts have been pinged
+ * @param {object[]} hosts
+ * @param {number} port
+ */
+exports.ping = async function(hosts, port = 139) {
+	debug(`pinging ${hosts.length} hosts`)
 
-	// wrapper function for pingHost, because it fucks up on low timeout and a lot of threads
-	function wrapPingHost(target, cb) {
-		let hadCB = false
-		session.pingHost(target, (e,t) => {
-			if(!hadCB) cb(e,t)
-			hadCB = true
-		})
+	let queue = new PQueue({concurrency: OPTS.threads.network})
+	
+	for(let host of hosts) {
+		queue.add(() => pingHost({
+			address: host.ip,
+			port: port,
+			timeout: OPTS.ping.timeout,
+			attempts: OPTS.ping.attempts
+		}).then(res => {
+			host.online = res.min !== undefined
+		}))
 	}
 
-	return new Promise((resolve, reject) => {
-		let queue = async.queue((target, callback) => wrapPingHost(target, callback),
-			options.threads.network || 10)
+	await queue.onIdle()
 
-		queue.drain = () => {
-			session.close()
-			if(options.minimize)
-				nodes = nodes.filter(node => node.online)
-
-			resolve({nodes: nodes, options: options})
-			debug(`pinging finished. ${nodes.length} nodes left`)
-		}
-
-		for(let node of nodes) {
-			queue.push(node.ip, (err, target) => {
-				if(err) {
-					node.online = false
-				} else {
-					node.online = true
-				}
-			})
-		}
-	})
+	hosts = hosts.filter(h => h.online)
+	debug(`pinging finished. ${hosts.length} hosts online`)
+	return hosts
 }
 
-// reverse dns lookup on node ip's
-exports.reverseLookup = function({nodes, options}) {
-	return new Promise((resolve, reject) => {
-		let queue = async.queue((target, callback) => dns.reverse(target, callback), 
-			options.threads.network || 10)
+/**
+ * Does a reverse lookup on the specified hosts. Returns a promise that resolves into all hosts that have a hostname
+ * @param {object[]} hosts
+ */
+exports.reverseLookup = async function(hosts) {
+	debug(`doing reverse lookup on ${hosts.length} ip's`)
 
-		queue.drain = () => {
-			if(options.minimize)
-				nodes = nodes.filter(node => node.hostname)
-			resolve({nodes: nodes, options: options})
-			debug(`reverse lookup finished. ${nodes.length} left`)
-		}
+	let queue = new PQueue({concurrency: OPTS.threads.network})
 
-		for(let node of nodes) {
-			queue.push(node.ip, (err, hostnames) => {
-				if(err) node.hostname = null
-				else node.hostname = hostnames[0].substring(0,hostnames[0].indexOf('\.'))
-			})
-		}
-	})
+	for(let host of hosts) {
+		queue.add(() => dnsReverse(host.ip).then(hostnames => host.hostname = hostnames[0]))
+	}
+
+	await queue.onIdle()
+	hosts = hosts.filter(h => h.hostname)
+	debug(`reverse lookup finished. found ${hosts.length} hostnames`)
+	return hosts
 }
 
-// lists node smb shares
 // TODO recode in pure javascript
 // TODO check if a share is accessible and otherwise ignore
-exports.listShares = function({nodes, options}) {
-	return new Promise((resolve, reject) => {
-		const shCount = options.threads.script || 10
+/**
+ * Lists the SMB shares of a host. Currently uses a shell executing a python script
+ * @param {object[]} hosts
+ */
+exports.listShares = async function(hosts) {
+	debug(`listing shares on ${hosts.length} hosts`)
+
+	return new Promise(resolve => {
+		const shCount = OPTS.threads.script
 		let found = 0
 
 		// create an array of shells
 		let shells = []
 		for(let i = 0; i < shCount; i++) {
-			shells.push(new PythonShell('src/python/listshares_interactive.py'))
+			shells.push(new PythonShell('src/python/listshares.py'))
 			shells[i].on('message', msg => {
 				const result = JSON.parse(msg)
-				debug(result)
-				result.shares = result.shares.map(r => ({name: r}))
-				debug(result)
-				nodes.find(x => x.hostname === result.hostname).shares = result.shares
+				hosts.find(x => x.ip === result.ip).shares = result.shares.map(s => ({name: s}))
 				
-				if(++found === nodes.length) {
-					nodes = nodes.filter(n => n.shares.length)
-					debug(`listing shares finished. ${nodes.length} left`)
-					resolve({nodes: nodes, options: options})
+				if(++found === hosts.length) {
+					hosts = hosts.filter(n => n.shares.length)
+					const totalshares = hosts.map(h => h.shares.length).reduce((a,b) => a+b, 0)
+					debug(`listing shares finished. ${hosts.length} have shares, with a total of ${totalshares} shares`)
+					
+					resolve(hosts)
 				}
 			})
 		}
 
 		// divide tasks over shells
-		for(let n = 0; n < nodes.length; n++) {
-			shells[n%shCount].send(nodes[n].hostname)
+		for(let n = 0; n < hosts.length; n++) {
+			shells[n%shCount].send(hosts[n].ip)
 		}
-
 		// close all shells
 		shells.forEach(shell => shell.end())
 	})
 }
 
-exports.indexHosts = function({nodes, options}) {
-	debug('starting indexing on '+(nodes || []).length+' nodes')
+/**
+ * Indexes a host by listing all files and folders within the available shares
+ * @param {object[]} hosts
+ */
+exports.indexHosts = async function(hosts) {
+	debug('starting indexing on '+hosts.length+' hosts')
 
-	return new Promise((resolve, reject) => {
-		let queue = async.queue(indexShare, options.threads.network)
+	let queue = new PQueue({concurrency: OPTS.threads.network})
+
+	for(let host of hosts) {
+		for(let share of host.shares) {
+			debug(host.ip, share.name)
+			let session = smbparser.createSession(host.ip, share.name)
+
+			queue.add(() => {
+				smbparser.listPath({ip: host.ip, share: share.name})
+					.then(result => debug(result))
+					.catch(err => debug(err))
+			})
+			
+			await queue.onIdle()		
+			session.close()
+		}
+		
+	}
+}
+
+exports.indexHosts_OLD = function(hosts) {	
+	return new Promise(resolve => {
+		let queue = async.queue(indexShare, OPTS.threads.network)
 		let scanresults = []
 
 		queue.drain = () => {
@@ -158,7 +165,7 @@ exports.indexHosts = function({nodes, options}) {
 			resolve()
 		}
 
-		nodes.forEach(n => n.shares.forEach(s => {
+		hosts.forEach(n => n.shares.forEach(s => {
 			queue.push({node: n, share: s.name}, (err, result) => {
 				if(err)
 					warn(`timeout while scanning ${s} on ${n.hostname}`, err)
@@ -210,9 +217,13 @@ function indexShare({node, share}, callback) {
 			} else if(err.code === 'STATUS_ACCESS_DENIED') {
 				// this is fine
 			} else if(err.code === 'STATUS_LOGON_FAILURE') {
+				// TODO
 			} else if(err.code === 'STATUS_BAD_NETWORK_NAME') {
+				// TODO
 			} else if(err.code === 'STATUS_NO_LOGON_SERVERS') {
+				// TODO
 			} else if(err.code === 'STATUS_OBJECT_NAME_NOT_FOUND') {
+				// TODO
 			} else if(err.code === 'ETIMEDOUT') {
 				// this is fine
 			} else {
@@ -234,24 +245,4 @@ function indexShare({node, share}, callback) {
 			}
 		}
 	}
-}
-
-function runPythonGetJSON(args, bulk) {
-	return new Promise((resolve, reject) => {
-		let proc = spawn('python', args)
-		proc.stderr.pipe(proc.stdout)
-
-		let output = ''
-		proc.stdout.on('data', data => output += data.toString())
-
-		proc.on('exit', code => {
-			if(code > 0) {
-				debug(`python ${args.join(' ')} -> exit code ${code} -> output: `, output)
-				reject(new Error('Python script crashed'))
-			} else {
-				const parsedOutput = JSON.parse(output)
-				resolve(parsedOutput)
-			}
-		})
-	})
 }
