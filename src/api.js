@@ -52,7 +52,7 @@ exports.serverStats = function(options) {
 	options.hostname = options.hostname || ''
 
 	return new Promise((resolve, reject) => {
-		const promise = options.hostname ? processing.getNodeInfo(options.hostname) : processing.getNodesInfo()
+		const promise = options.hostname ? processing.getNode(options.hostname) : processing.getNodes()
 
 		promise.then(resolve).catch(reject)
 	})

@@ -21,6 +21,7 @@ node_modules/
 
 # VS Code configs
 .vscode/
+.eslintrc.json
 
 # dev test class
 test.js

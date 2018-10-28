@@ -23,6 +23,7 @@
 - google analytics
 - better config -> https://www.npmjs.com/package/config
 - NeDB scheduled compacting db
+- check for open ports (137, 445, 21) instead of icmp echo requests (windows blocks ICMP echo from outside small local subnet)
 
 ## bugs
 - error if logs directory does not exists

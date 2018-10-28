@@ -5,12 +5,15 @@
     "port": 8000
   },
   "discovery": {
-    "range": "130.89.160.0/20",
+    "range": "130.89.163.150/24",
+    "ping": {
+      "timeout": 100,
+      "attempts": 1
+    },
     "threads": {
       "network": 100,
-      "script": 50
-    },
-    "minimize": true
+      "script": 10
+    }
   },
   "scheduling": {
     "discoverTime": "0 0 * * *",
