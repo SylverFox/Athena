@@ -24,4 +24,3 @@ node_modules/
 .eslintrc.json
 
 # dev test class
-test*.js
