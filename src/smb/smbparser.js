@@ -1,4 +1,4 @@
-const SMB = require('@marsaud/smb2')
+const SMB = require('smb2')
 const {warn} = require('winston')
 
 //const ATTR_READONLY            = 0x0001
