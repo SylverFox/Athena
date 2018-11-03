@@ -1,0 +1,33 @@
+Major features:
+  ☐ JSON API
+  ☐ query and document caching
+  ☐ create url handler
+  ☐ script to detect url handler
+  ☐ FTP indexing -> npm install --save ftp
+  ☐ pure javascript implementation of SMB
+  ✔ Embedded DBMS -> https://github.com/louischatriot/nedb @done(18-11-03 22:33)
+
+Minor features:
+  ☐ schedule task on first startup (populate database on first run)
+  ☐ support for SMB1
+  ☐ automatically get subnet to scan if no subnet is given
+  ☐ favicon
+  ☐ statistics page
+  ☐ about page
+  ☐ API documentation
+  ☐ general documentation
+  ☐ custom error pages
+  ☐ stats page, look at https://d3js.org
+  ☐ google analytics
+  ☐ better config -> https://www.npmjs.com/package/config
+  ☐ NeDB scheduled compacting db
+  ☐ check for open ports (137, 445, 21) instead of icmp echo requests (windows blocks ICMP echo from outside small local subnet)
+
+Bugs:
+  ☐ error if logs directory does not exists
+  ☐ check for pysmb -> EPIPE error
+  ☐ smb2 does not list complete folder contents
+
+Archive:
+  ✔ pyshell opens windows after update @done(18-11-03 22:32) @project(Bugs)
+  ✔ mongo timeout on postprocessing. (split mapreduce?) @done(18-11-03 22:32) @project(Bugs)
