@@ -1,0 +1,37 @@
+CORE
+
+hosts
+	- _id
+	- ip
+	- hostname
+	- lastseen
+
+shares
+	- _id
+	- hostId
+	- sharename
+	- filecount
+	- size
+
+files
+	- _id
+	- shareId
+	- filename
+	- keywords
+	- path
+	- size
+	- isDirectory
+
+AUX
+
+scans
+	- _id
+	- task
+	- starttime
+	- runtime
+	- data
+
+keywords
+	- _id
+	- keyword
+	

@@ -27,6 +27,3 @@ append content
 							td= helper.timestampToLastseen(server.seen.pop())
 							td= (server.shares || []).reduce((sum, s) => sum + (s.files ? s.files : 0), 0)
 							td= helper.bytesToSize((server.shares || []).reduce((sum, s) => sum + (s.size ? s.size : 0), 0))
-
-
-	//replace(/\//, '\\')
