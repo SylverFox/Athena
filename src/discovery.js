@@ -11,6 +11,8 @@ const winston = require('winston')
 const {warn, debug} = winston
 const PythonShell = require('python-shell')
 
+const smbEnumerateShares = require('smb-enumerate-shares')
+
 const smbparser = require('./smb/smbparser')
 const processing = require('./processing')
 
@@ -40,20 +42,22 @@ exports.build = async () => iprange(OPTS.range).map(ip => ({ip: ip}))
  * @param {object[]} hosts
  * @param {number} port
  */
-exports.ping = async function(hosts, port = 139) {
+exports.ping = async function(hosts, port = 445) {
 	debug(`pinging ${hosts.length} hosts`)
 
 	let queue = new PQueue({concurrency: OPTS.threads.network})
 	
 	for(let host of hosts) {
-		queue.add(() => pingHost({
-			address: host.ip,
-			port: port,
-			timeout: OPTS.ping.timeout,
-			attempts: OPTS.ping.attempts
-		}).then(res => {
-			host.online = res.min !== undefined
-		}))
+		queue.add(
+			() => pingHost({
+				address: host.ip,
+				port: port,
+				timeout: OPTS.ping.timeout,
+				attempts: OPTS.ping.attempts
+			}).then(res => {
+				host.online = res.min !== undefined
+			})
+		).catch(err => debug(err))
 	}
 
 	await queue.onIdle()
@@ -74,6 +78,7 @@ exports.reverseLookup = async function(hosts) {
 
 	for(let host of hosts) {
 		queue.add(() => dnsReverse(host.ip).then(hostnames => host.hostname = hostnames[0]))
+			.catch(err => debug(err))
 	}
 
 	await queue.onIdle()
@@ -82,13 +87,38 @@ exports.reverseLookup = async function(hosts) {
 	return hosts
 }
 
-// TODO recode in pure javascript
-// TODO check if a share is accessible and otherwise ignore
 /**
- * Lists the SMB shares of a host. Currently uses a shell executing a python script
+ * Lists the SMB shares of a host.
  * @param {object[]} hosts
  */
 exports.listShares = async function(hosts) {
+	debug(`listing shares on ${hosts.length} hosts`)
+
+	let queue = new PQueue({concurrency: OPTS.threads.network})
+
+	for(let host of hosts) {
+		host.shares = []
+		queue.add(() => smbEnumerateShares({host: host.ip})
+			.then(shares => {
+				host.shares = shares.filter(s => !s.hidden).map(s => s.name)
+				debug(host.ip, host.shares)
+			})
+		).catch(err => debug(host.ip, err.message))
+	}
+
+	await queue.onIdle()
+	hosts = hosts.filter(h => h.shares.length)
+	const totalShares = hosts.map(h => h.shares.length).reduce((a,b) => a + b, 0)
+	debug(`listing shares finished. ${hosts.length} have shares, with a total of ${totalShares} shares`)
+	return hosts
+}
+
+/**
+ * Lists the SMB shares of a host. Currently uses a shell executing a python script
+ * @param {object[]} hosts
+ * @deprecated
+ */
+exports.listShares_old = async function(hosts) {
 	debug(`listing shares on ${hosts.length} hosts`)
 
 	return new Promise(resolve => {
@@ -149,6 +179,9 @@ exports.indexHosts = async function(hosts) {
 	}
 }
 
+/**
+ * @deprecated
+ */
 exports.indexHosts_OLD = function(hosts) {	
 	return new Promise(resolve => {
 		let queue = async.queue(indexShare, OPTS.threads.network)

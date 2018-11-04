@@ -1,10 +1,13 @@
+Discovery:
+  ☐ Have a single queue instance for possible multithreaded discoveries
+
 Major features:
   ☐ JSON API
   ☐ query and document caching
   ☐ create url handler
   ☐ script to detect url handler
   ☐ FTP indexing -> npm install --save ftp
-  ☐ pure javascript implementation of SMB
+  ✔ pure javascript implementation of SMB @done(18-11-04 14:27)
   ✔ Embedded DBMS -> https://github.com/louischatriot/nedb @done(18-11-03 22:33)
 
 Minor features:
