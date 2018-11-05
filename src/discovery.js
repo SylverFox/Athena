@@ -1,22 +1,15 @@
 const dns = require('dns')
 const util = require('util')
-
 const config = require('config')
 const tcpping = require('tcp-ping')
-const async = require('async')
+const smbEnumerateShares = require('smb-enumerate-shares')
 const PQueue = require('p-queue')
-
 const iprange = require('iprange')
 const winston = require('winston')
 const {warn, debug} = winston
-const PythonShell = require('python-shell')
 
-const smbEnumerateShares = require('smb-enumerate-shares')
-
-const smbparser = require('./smb/smbparser')
+const Smbclient = require('./smb/smbclient')
 const processing = require('./processing')
-
-const OPTS = config.discovery
 
 // custom logger for errors in smb scanning
 const smblogger = new (winston.Logger)({
@@ -30,252 +23,119 @@ const smblogger = new (winston.Logger)({
 const pingHost = util.promisify(tcpping.ping)
 // promisified version of dns.reverse
 const dnsReverse = util.promisify(dns.reverse)
+// throttled promise queue to limit network connections
+const queue = new PQueue({concurrency: config.discovery.threads})
 
 /**
  * prepares objects for the discovery pipeline based on the iprange in the config
  */
-exports.build = async () => iprange(OPTS.range).map(ip => ({ip: ip}))
+exports.build = async () => iprange(config.discovery.range).map(ip => ({ip: ip}))
 
 /**
- * Pings the given hosts on the specified port to check if it is online and the port is accessible
- * Returns a promise that is resolved when all hosts have been pinged
- * @param {object[]} hosts
+ * Pings the given host on the specified port to check if it is online and the port is accessible
+ * @param {object} host
  * @param {number} port
  */
-exports.ping = async function(hosts, port = 445) {
-	debug(`pinging ${hosts.length} hosts`)
-
-	let queue = new PQueue({concurrency: OPTS.threads.network})
-	
-	for(let host of hosts) {
-		queue.add(
-			() => pingHost({
-				address: host.ip,
-				port: port,
-				timeout: OPTS.ping.timeout,
-				attempts: OPTS.ping.attempts
-			}).then(res => {
-				host.online = res.min !== undefined
-			})
-		).catch(err => debug(err))
+exports.ping = async function(host, port = 445) {
+	const options = {
+		address: host.ip,
+		port: port,
+		timeout: config.discovery.ping.timeout,
+		attempts: config.discovery.ping.attempts		
 	}
-
-	await queue.onIdle()
-
-	hosts = hosts.filter(h => h.online)
-	debug(`pinging finished. ${hosts.length} hosts online`)
-	return hosts
+	host.online = await queue.add(() => pingHost(options))
+		.then(res => res.min !== undefined)
+		.catch(err => {
+			debug(err) // TODO remove
+			return false
+		})
+	return host
 }
 
 /**
- * Does a reverse lookup on the specified hosts. Returns a promise that resolves into all hosts that have a hostname
- * @param {object[]} hosts
+ * Does a reverse lookup on the specified host.
+ * @param {object} host
  */
-exports.reverseLookup = async function(hosts) {
-	debug(`doing reverse lookup on ${hosts.length} ip's`)
-
-	let queue = new PQueue({concurrency: OPTS.threads.network})
-
-	for(let host of hosts) {
-		queue.add(() => dnsReverse(host.ip).then(hostnames => host.hostname = hostnames[0]))
-			.catch(err => debug(err))
-	}
-
-	await queue.onIdle()
-	hosts = hosts.filter(h => h.hostname)
-	debug(`reverse lookup finished. found ${hosts.length} hostnames`)
-	return hosts
+exports.reverseLookup = async function(host) {
+	host.hostname = await queue.add(() => dnsReverse(host.ip))
+		.then(hostnames => hostnames[0])
+		.catch(err => debug(err))
+	return host
 }
 
 /**
  * Lists the SMB shares of a host.
- * @param {object[]} hosts
+ * @param {object} host
  */
-exports.listShares = async function(hosts) {
-	debug(`listing shares on ${hosts.length} hosts`)
-
-	let queue = new PQueue({concurrency: OPTS.threads.network})
-
-	for(let host of hosts) {
-		host.shares = []
-		queue.add(() => smbEnumerateShares({host: host.ip})
-			.then(shares => {
-				host.shares = shares.filter(s => !s.hidden).map(s => s.name)
-				debug(host.ip, host.shares)
-			})
-		).catch(err => debug(host.ip, err.message))
-	}
-
-	await queue.onIdle()
-	hosts = hosts.filter(h => h.shares.length)
-	const totalShares = hosts.map(h => h.shares.length).reduce((a,b) => a + b, 0)
-	debug(`listing shares finished. ${hosts.length} have shares, with a total of ${totalShares} shares`)
-	return hosts
-}
-
-/**
- * Lists the SMB shares of a host. Currently uses a shell executing a python script
- * @param {object[]} hosts
- * @deprecated
- */
-exports.listShares_old = async function(hosts) {
-	debug(`listing shares on ${hosts.length} hosts`)
-
-	return new Promise(resolve => {
-		const shCount = OPTS.threads.script
-		let found = 0
-
-		// create an array of shells
-		let shells = []
-		for(let i = 0; i < shCount; i++) {
-			shells.push(new PythonShell('src/python/listshares.py'))
-			shells[i].on('message', msg => {
-				const result = JSON.parse(msg)
-				hosts.find(x => x.ip === result.ip).shares = result.shares.map(s => ({name: s}))
-				
-				if(++found === hosts.length) {
-					hosts = hosts.filter(n => n.shares.length)
-					const totalshares = hosts.map(h => h.shares.length).reduce((a,b) => a+b, 0)
-					debug(`listing shares finished. ${hosts.length} have shares, with a total of ${totalshares} shares`)
-					
-					resolve(hosts)
-				}
-			})
-		}
-
-		// divide tasks over shells
-		for(let n = 0; n < hosts.length; n++) {
-			shells[n%shCount].send(hosts[n].ip)
-		}
-		// close all shells
-		shells.forEach(shell => shell.end())
-	})
+exports.listShares = async function(host) {
+	host.shares = await queue.add(() => smbEnumerateShares({host: host.ip, timeout: 10000}))
+		.then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => ({name: s.name})))
+		.catch(err => {
+			debug(host.ip, err.message) // TODO remove
+			return []
+		})
+	return host
 }
 
 /**
  * Indexes a host by listing all files and folders within the available shares
- * @param {object[]} hosts
+ * @param {object} host
  */
-exports.indexHosts = async function(hosts) {
-	debug('starting indexing on '+hosts.length+' hosts')
-
-	let queue = new PQueue({concurrency: OPTS.threads.network})
-
-	for(let host of hosts) {
-		for(let share of host.shares) {
-			debug(host.ip, share.name)
-			let session = smbparser.createSession(host.ip, share.name)
-
-			queue.add(() => {
-				smbparser.listPath({ip: host.ip, share: share.name})
-					.then(result => debug(result))
-					.catch(err => debug(err))
+exports.indexHost = async function(host) {
+	for(let share of host.shares) {
+		const client = new Smbclient(host.ip, share.name)
+		const result = await queue.add(() => indexDirectoryRecursive(client, ''))
+			.then(result => {
+				// debug(host.hostname, share.name, result.size, result.index.length)
+				// for(let item of result.index) {
+				// 	debug(item.path, item.filename, item.size)
+				// }
+				return result
 			})
-			
-			await queue.onIdle()		
-			session.close()
-		}
-		
+			.catch(err => {
+				debug(host.hostname, share.name, err.message)
+				return {size: 0, index: null}
+			})
+		share.size = result.size
+		share.index = result.index
+		client.close()
 	}
+	return host
 }
 
 /**
- * @deprecated
+ * Recursively indexes a share on a host using the provided Smbclient. Starting path option is the
+ * first entry point on the share. Return an object containing the total size of indexed files and
+ * the index, an array of objects.
+ * @param {Smbclient} client 
+ * @param {string} path 
  */
-exports.indexHosts_OLD = function(hosts) {	
-	return new Promise(resolve => {
-		let queue = async.queue(indexShare, OPTS.threads.network)
-		let scanresults = []
-
-		queue.drain = () => {
-			const totalSize = scanresults.reduce((sum, sr) => sum + sr.size, 0)
-			const totalFiles = scanresults.reduce((sum, sr) => sum + sr.files, 0)
-			const totalDirs = scanresults.reduce((sum, sr) => sum + sr.directories, 0)
-			const totalErrs = scanresults.reduce((sum, sr) => sum + sr.errors, 0)
-			debug(`total size: ${totalSize}, total files: ${totalFiles}, total directories: ${totalDirs}, total errors: ${totalErrs}`)
-
-			scanresults = null
-			resolve()
-		}
-
-		hosts.forEach(n => n.shares.forEach(s => {
-			queue.push({node: n, share: s.name}, (err, result) => {
-				if(err)
-					warn(`timeout while scanning ${s} on ${n.hostname}`, err)
-				else {
-					scanresults.push(result)
-					debug(`${queue.running()} jobs running, ${queue.length()} waiting`)
-				}
-			})
-		}))
-	})
-}
-
-function indexShare({node, share}, callback) {
-	let files = 0
-	let directories = 0
-	let errors = 0
+async function indexDirectoryRecursive(client, path) {
 	let size = 0
+	let index = []
 
-	let session = smbparser.session(node.ip, share)
-
-	let queue = async.queue(async.timeout(listFiles, 10000))
-
-	queue.drain = () => {
-		session.close()
-		session = null
-		const scanresult = {name: node.hostname, share, files, directories, errors, size}
-		debug(scanresult)
-		processing.updateNodeInfo(scanresult)
-			.catch(err => warn('database insertion failed', err))
-		callback(null, scanresult)
+	let files = []
+	try {
+		files = await client.readdir(path)
+	} catch(err) {
+		smblogger.error(err)
 	}
 
-	queue.push('', resultHandle)
+	// sort by files first, then alphabetically
+	files.sort((a,b) => a.isDirectory - b.isDirectory || a.filename.localeCompare(b.filename))
 
-	// basically a wrapper for smbparser.listPath from promise to callback
-	function listFiles(path, cb) {
-		smbparser.listPath(session, path)
-			.then(res => cb(null, {path: path, files: res}))
-			.catch(err => cb(err, {path: path, files: null}))
-	}
-
-	function resultHandle(err, res) {
-		if(err) {
-			errors++
-			smblogger.error(node.hostname, share, res ? res.path : '', err)
-			// handle an error
-			if(err.code === 'STATUS_USER_SESSION_DELETED') {
-				// TODO retry?
-			} else if(err.code === 'STATUS_ACCESS_DENIED') {
-				// this is fine
-			} else if(err.code === 'STATUS_LOGON_FAILURE') {
-				// TODO
-			} else if(err.code === 'STATUS_BAD_NETWORK_NAME') {
-				// TODO
-			} else if(err.code === 'STATUS_NO_LOGON_SERVERS') {
-				// TODO
-			} else if(err.code === 'STATUS_OBJECT_NAME_NOT_FOUND') {
-				// TODO
-			} else if(err.code === 'ETIMEDOUT') {
-				// this is fine
-			} else {
-				warn('got unknown error: ', err)
-			}
+	for(let file of files) {
+		if(file.isDirectory) {
+			const subindex = await indexDirectoryRecursive(client, path + file.filename + '\\')
+			size += subindex.size
+			file.size = subindex.size
+			index.push(Object.assign({path}, file))
+			index = index.concat(subindex.index)
 		} else {
-			for(let file of res.files) {
-				if(file.directory) {
-					directories++
-					queue.push(res.path + file.filename + '\\', resultHandle)
-				} else {
-					files++
-					size += file.size
-					const path = res.path.replace(/\\/g, '/').slice(0, -1)
-					const data = {node: node, share: share, path: path, file: file}
-					processing.insertNewFile(data)
-						.catch(err => warn('database insertion failed', err))
-				}
-			}
+			size += file.size
+			index.push(Object.assign({path}, file))
 		}
 	}
+
+	return {size, index}
 }

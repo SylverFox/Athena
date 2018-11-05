@@ -10,9 +10,7 @@
       "timeout": 100,
       "attempts": 1
     },
-    "threads": {
-      "network": 10
-    }
+    "threads": 10
   },
   "scheduling": {
     "discoverTime": "0 0 * * *",

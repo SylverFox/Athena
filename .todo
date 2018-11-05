@@ -1,14 +1,15 @@
 Discovery:
-  ☐ Have a single queue instance for possible multithreaded discoveries
+  ☐ Improve indexing shares
+  ☐ Investigate possible problems with object sizes when indexing shares @low 
+  ☐ Recheck documentation
+  ☐ Implement own readdir package, smb2c does not process subsequent QUERY_DIRECTORY packets and smb2 gives only filename
 
 Major features:
-  ☐ JSON API
+  ☐ JSON API @low 
   ☐ query and document caching
   ☐ create url handler
   ☐ script to detect url handler
   ☐ FTP indexing -> npm install --save ftp
-  ✔ pure javascript implementation of SMB @done(18-11-04 14:27)
-  ✔ Embedded DBMS -> https://github.com/louischatriot/nedb @done(18-11-03 22:33)
 
 Minor features:
   ☐ schedule task on first startup (populate database on first run)
@@ -21,16 +22,22 @@ Minor features:
   ☐ general documentation
   ☐ custom error pages
   ☐ stats page, look at https://d3js.org
-  ☐ google analytics
   ☐ better config -> https://www.npmjs.com/package/config
   ☐ NeDB scheduled compacting db
-  ☐ check for open ports (137, 445, 21) instead of icmp echo requests (windows blocks ICMP echo from outside small local subnet)
 
 Bugs:
   ☐ error if logs directory does not exists
-  ☐ check for pysmb -> EPIPE error
   ☐ smb2 does not list complete folder contents
 
+Other:
+  ☐ cleanup dependencies
+
 Archive:
+  ✔ Have a single queue instance for possible multithreaded discoveries @started(18-11-04 21:38) @done(18-11-05 02:16) @lasted(4h38m49s) @project(Discovery)
+  ✘ google analytics? @cancelled(18-11-05 02:17) @project(Minor features)
+  ✔ check for open ports (137, 445, 21) instead of icmp echo requests (windows blocks ICMP echo from outside small local subnet) @started(18-11-04 21:38) @done(18-11-05 02:16) @lasted(4h38m52s) @project(Minor features)
+  ✔ pure javascript implementation of SMB @done(18-11-04 14:27) @project(Major features)
+  ✔ Embedded DBMS -> https://github.com/louischatriot/nedb @done(18-11-03 22:33) @project(Major features)
+  ✔ check for pysmb -> EPIPE error @done(18-11-04 20:27) @project(Bugs)
   ✔ pyshell opens windows after update @done(18-11-03 22:32) @project(Bugs)
   ✔ mongo timeout on postprocessing. (split mapreduce?) @done(18-11-03 22:32) @project(Bugs)
