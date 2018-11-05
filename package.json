@@ -14,7 +14,6 @@
     "async": "^2.6.1",
     "body-parser": "^1.18.3",
     "config": "^2.0.1",
-    "console.table": "^0.8.0",
     "cross-env": "^5.2.0",
     "express": "^4.16.4",
     "fast-levenshtein": "^2.0.6",
@@ -27,14 +26,15 @@
     "python-shell": "^0.4.0",
     "response-time": "^2.3.2",
     "send": "^0.16.2",
+    "smb-enumerate-files": "^1.0.1",
     "smb-enumerate-shares": "^1.1.2",
-    "smb2c": "^0.7.5",
     "tcp-ping": "^0.1.1",
     "winston": "^2.4.4"
   },
   "devDependencies": {
-    "forever": "^0.15.3",
-    "delay": "^4.1.0"
+    "console.table": "^0.8.0",
+    "delay": "^4.1.0",
+    "forever": "^0.15.3"
   },
   "scripts": {
     "start": "cross-env Node_ENV=development& node server.js",

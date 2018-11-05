@@ -3,12 +3,11 @@ const util = require('util')
 const config = require('config')
 const tcpping = require('tcp-ping')
 const smbEnumerateShares = require('smb-enumerate-shares')
+const smbEnumerateFiles = require('smb-enumerate-files')
 const PQueue = require('p-queue')
 const iprange = require('iprange')
 const winston = require('winston')
 const {warn, debug} = winston
-
-const Smbclient = require('./smb/smbclient')
 
 // custom logger for errors in smb scanning
 const smblogger = new (winston.Logger)({
@@ -45,7 +44,7 @@ exports.ping = async function(host, port = 445) {
 	host.online = await queue.add(() => pingHost(options))
 		.then(res => res.min !== undefined)
 		.catch(err => {
-			debug(err) // TODO remove
+			debug(err)
 			return false
 		})
 	return host
@@ -70,7 +69,7 @@ exports.listShares = async function(host) {
 	host.shares = await queue.add(() => smbEnumerateShares({host: host.ip, timeout: 10000}))
 		.then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => ({name: s.name})))
 		.catch(err => {
-			debug(host.ip, err.message) // TODO remove
+			debug(host.hostname, err.message)
 			return []
 		})
 	return host
@@ -82,50 +81,62 @@ exports.listShares = async function(host) {
  */
 exports.indexHost = async function(host) {
 	for(let share of host.shares) {
-		const client = new Smbclient(host.ip, share.name)
-		const result = await queue.add(() => indexDirectoryRecursive(client, ''))
+		const smbsession = smbEnumerateFiles.createSession({
+			host: host.ip,
+			share: share.name
+		})
+		try {
+			await smbsession.connect()
+		} catch(err) {
+			smblogger.error(host.hostname, share.name, err.message)
+			continue
+		}
+		const result = await queue.add(() => indexDirectoryRecursive(smbsession, ''))
 			.then(result => {
-				// debug(host.hostname, share.name, result.size, result.index.length)
-				// for(let item of result.index) {
-				// 	debug(item.path, item.filename, item.size)
-				// }
+				debug('=====',host.hostname+'/'+share.name,'files:',result.index.length,'total size:',result.size,'=====')
+				//console.table(result.index)
 				return result
 			})
 			.catch(err => {
-				debug(host.hostname, share.name, err.message)
+				debug(host.hostname, share.name, err)
 				return {size: 0, index: null}
 			})
 		share.size = result.size
 		share.index = result.index
-		client.close()
+		smbsession.close()
 	}
 	return host
 }
 
 /**
- * Recursively indexes a share on a host using the provided Smbclient. Starting path option is the
+ * Recursively indexes a share on a host using the provided Smbsession. Starting path option is the
  * first entry point on the share. Return an object containing the total size of indexed files and
  * the index, an array of objects.
- * @param {Smbclient} client 
+ * @param {object} session 
  * @param {string} path 
  */
-async function indexDirectoryRecursive(client, path) {
+async function indexDirectoryRecursive(session, path) {
 	let size = 0
 	let index = []
 
 	let files = []
 	try {
-		files = await client.readdir(path)
+		files = await session.enumerate(path)
+		files = files.map(f => ({
+			filename: f.filename,
+			size: f.size,
+			isDirectory: f.directory
+		}))
 	} catch(err) {
-		smblogger.error(err)
+		smblogger.error(session.options.host, session.options.share, err.message)
 	}
-
+	
 	// sort by files first, then alphabetically
 	files.sort((a,b) => a.isDirectory - b.isDirectory || a.filename.localeCompare(b.filename))
 
 	for(let file of files) {
 		if(file.isDirectory) {
-			const subindex = await indexDirectoryRecursive(client, path + file.filename + '\\')
+			const subindex = await indexDirectoryRecursive(session, path + file.filename + '\\')
 			size += subindex.size
 			file.size = subindex.size
 			index.push(Object.assign({path}, file))

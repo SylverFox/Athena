@@ -1,8 +1,7 @@
 Discovery:
-  ☐ Improve indexing shares
+  ☐ Improve indexing shares @started(18-11-05 23:27)
   ☐ Investigate possible problems with object sizes when indexing shares @low 
-  ☐ Recheck documentation
-  ☐ Implement own readdir package, smb2c does not process subsequent QUERY_DIRECTORY packets and smb2 gives only filename
+  ☐ Recheck documentation @next-release
 
 Major features:
   ☐ JSON API @low 
@@ -13,8 +12,7 @@ Major features:
 
 Minor features:
   ☐ schedule task on first startup (populate database on first run)
-  ☐ support for SMB1
-  ☐ automatically get subnet to scan if no subnet is given
+  ☐ support for SMB1 @low
   ☐ favicon
   ☐ statistics page
   ☐ about page
@@ -28,11 +26,16 @@ Minor features:
 Bugs:
   ☐ error if logs directory does not exists
   ☐ smb2 does not list complete folder contents
+  ☐ Some errors occur on smb-enumerate-shares
 
 Other:
   ☐ cleanup dependencies
+  ☐ Change readme
+  ☐ If the heap size becomes too large on indexing hosts, check for the possibility of using eventemitters
 
 Archive:
+  ✔ Implement own readdir package, smb2c does not process subsequent QUERY_DIRECTORY packets and smb2 gives only filename @done(18-11-05 23:28) @project(Discovery)
+  ✘ automatically get subnet to scan if no subnet is given @cancelled(18-11-05 23:28) @project(Minor features)
   ✔ Have a single queue instance for possible multithreaded discoveries @started(18-11-04 21:38) @done(18-11-05 02:16) @lasted(4h38m49s) @project(Discovery)
   ✘ google analytics? @cancelled(18-11-05 02:17) @project(Minor features)
   ✔ check for open ports (137, 445, 21) instead of icmp echo requests (windows blocks ICMP echo from outside small local subnet) @started(18-11-04 21:38) @done(18-11-05 02:16) @lasted(4h38m52s) @project(Minor features)
