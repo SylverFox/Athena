@@ -26,20 +26,20 @@ function discoverNewHosts() {
 	const startTime = Date.now()
 
 	return discovery.build(config.discovery)
-	.then(discovery.ping)
-	.then(discovery.reverseLookup)
-	.then(discovery.listShares)
-	.then(processing.appendNewNodes)
-	.then(() => processing.insertNewScan('discoverNewHosts', startTime, Date.now() - startTime))
+		.then(discovery.ping)
+		.then(discovery.reverseLookup)
+		.then(discovery.listShares)
+		.then(processing.appendNewNodes)
+		.then(() => processing.insertNewScan('discoverNewHosts', startTime, Date.now() - startTime))
 }
 
 function pingKnownHosts() {
 	const startTime = Date.now()
 
 	return processing.getNodeIPList({nodes: null, options: config.discovery})
-	.then(discovery.ping)
-	.then(processing.updateOnlineStatus)
-	.then(processing.insertNewScan('pingKnownHosts', startTime, Date.now() - startTime))
+		.then(discovery.ping)
+		.then(processing.updateOnlineStatus)
+		.then(processing.insertNewScan('pingKnownHosts', startTime, Date.now() - startTime))
 }
 
 function indexKnownHosts() {
@@ -53,14 +53,14 @@ function indexKnownHosts() {
 
 function postProcessing() {
 	return processing.buildFileIndex()
-	.then(processing.buildDirectoryIndex)
-	.then(processing.buildKeywordIndex)
+		.then(processing.buildDirectoryIndex)
+		.then(processing.buildKeywordIndex)
 }
 
 function indexStreamableContent() {
 	return processing.buildStreamableIndex()
-	.then(() => info('done indexing streamable content'))
-	.catch(err => warn('building streamable index failed', err))
+		.then(() => info('done indexing streamable content'))
+		.catch(err => warn('building streamable index failed', err))
 }
 
 /** OUTSIDE FUNCTIONS **/

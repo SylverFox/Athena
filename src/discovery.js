@@ -9,7 +9,6 @@ const winston = require('winston')
 const {warn, debug} = winston
 
 const Smbclient = require('./smb/smbclient')
-const processing = require('./processing')
 
 // custom logger for errors in smb scanning
 const smblogger = new (winston.Logger)({

@@ -1,6 +1,4 @@
-const levenshtein = require('fast-levenshtein');
-const {debug} = require('winston')
-const config = require('config')
+const levenshtein = require('fast-levenshtein')
 
 const processing = require('./processing')
 
@@ -20,9 +18,9 @@ exports.search = function(query, options) {
 
 		Promise.all(queries).then(results => {
 			results = results.reduce((a,b) => a.concat(b)).sort((doc1, doc2) => {
-				levDoc1 = levenshtein.get(doc1.filename,query)
-				levDoc2 = levenshtein.get(doc2.filename,query)
-				return levDoc1 - levDoc2;
+				const levDoc1 = levenshtein.get(doc1.filename,query)
+				const levDoc2 = levenshtein.get(doc2.filename,query)
+				return levDoc1 - levDoc2
 			}).slice(start, max)
 
 			resolve(JSON.stringify(results))
