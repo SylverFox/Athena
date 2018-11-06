@@ -1,5 +1,5 @@
 Discovery:
-  ☐ Improve indexing shares @started(18-11-05 23:27)
+  ✔ Improve indexing shares @started(18-11-05 23:27) @done(18-11-06 01:10) @lasted(1h43m4s)
   ☐ Investigate possible problems with object sizes when indexing shares @low 
   ☐ Recheck documentation @next-release
 
@@ -27,6 +27,7 @@ Bugs:
   ☐ error if logs directory does not exists
   ☐ smb2 does not list complete folder contents
   ☐ Some errors occur on smb-enumerate-shares
+  ☐ Massiv out of memory errors. Check for NeDB alternative?
 
 Other:
   ☐ cleanup dependencies

@@ -1,6 +1,6 @@
-const {info, warn, startTimer} = require('winston')
+const events = require('events')
+const {info, warn, debug, startTimer} = require('winston')
 const PQueue = require('p-queue')
-const config = require('config')
 
 const discovery = require('./discovery')
 const processing = require('./processing')
@@ -12,48 +12,94 @@ const queue = new PQueue({concurrency: 1})
 /**
  * Discovers new hosts by pinging the entire range, look up their hostnames and listing their shares
  */
-function discoverNewHosts() {
-	const startTime = Date.now()
+async function discoverNewHosts() {
+	// debug('starting discovernewhosts')
+	const startTime = new Date()
 
-	return discovery.build(config.discovery)
-		.then(discovery.ping)
-		.then(discovery.reverseLookup)
-		.then(discovery.listShares)
-		.then(processing.appendNewNodes)
-		.then(() => processing.insertNewScan('discoverNewHosts', startTime, Date.now() - startTime))
+	const hosts = await discovery.build()
+	const task = async host => {
+		await discovery.ping(host)
+		if(!host.online) return
+		await discovery.reverseLookup(host)
+		if(!host.hostname) return
+		await discovery.listShares(host)
+		if(!host.shares.length) return
+		await processing.upsertHost(host)
+	}
+
+	await Promise.all(hosts.map(task))
+	await processing.insertScan('discoverNewHosts', startTime, Date.now() - startTime)
 }
 
 /**
  * Pings all known hosts in the database and records their online status
  */
-function pingKnownHosts() {
+async function pingKnownHosts() {
+	// debug('starting pingknownhosts')
 	const startTime = Date.now()
 
-	return processing.getNodeIPList({nodes: null, options: config.discovery})
-		.then(discovery.ping)
-		.then(processing.updateOnlineStatus)
-		.then(processing.insertNewScan('pingKnownHosts', startTime, Date.now() - startTime))
+	const hosts = await processing.findHosts()
+	const task = async host => {
+		await discovery.ping(host)
+		if(!host.online) return
+		await processing.updateLastseen(host._id)
+	}
+
+	await Promise.all(hosts.map(task))
+	await processing.insertScan('pingKnownHosts', startTime, Date.now() - startTime)
 }
 
 /**
  * Indexes all know hosts and records it in the db
  */
-function indexKnownHosts() {
+async function indexKnownHosts() {
+	// debug('starting indexknownhosts')
 	const startTime = Date.now()
 
-	return processing.emptyFilesCache()
-		.then(() => processing.getNodeShareList({nodes: null, options: config.discovery}))
-		.then(discovery.indexHosts)
-		.then(() => processing.insertNewScan('indexKnownHosts', startTime, Date.now() - startTime))
+	const hosts = await processing.findHosts()
+	const hostTask = async host => {
+		await discovery.listShares(host)
+		if(!host.shares.length) {debug('no shares on', host.hostname); return}
+		await Promise.all(host.shares.map(share => shareTask(host, share)))
+	}
+	const shareTask = async (host, share) => {
+		// debug('starting share task on',host.hostname,share.name)
+		// upsert share to make sure it exists
+		await processing.upsertShare(host._id, share)
+		// get the id of that share
+		let shareId = await processing.findShareByName(share.name)
+		if(!shareId) {debug('no share id returned'); return}
+		shareId = shareId._id
+
+		// remove all files of this share
+		await processing.removeFiles(shareId)
+
+		// create a new event emitter to process data in batches
+		const indexEmitter = new events.EventEmitter()
+		indexEmitter.on('data', indexedFiles => {
+			// insert into database
+			processing.insertFiles(shareId, indexedFiles)
+		})
+		// start indexing and wait for completion
+		await discovery.indexShare(host, share, indexEmitter)
+		// update share information
+		await processing.upsertShare(host._id, share)
+	}
+
+	await Promise.all(hosts.map(hostTask))
+	await processing.insertScan('indexKnownHosts', startTime, Date.now() - startTime)
 }
 
 /**
  * Does post processing on indexed hosts, such as building keyword indexes
  */
-function postProcessing() {
-	return processing.buildFileIndex()
-		.then(processing.buildDirectoryIndex)
-		.then(processing.buildKeywordIndex)
+async function postProcessing() {
+	// compact the datastore first
+	await processing.compactDB()
+
+	// return processing.buildFileIndex()
+	// 	.then(processing.buildDirectoryIndex)
+	// 	.then(processing.buildKeywordIndex)
 }
 
 // TODO for later releases
@@ -69,11 +115,11 @@ function indexStreamableContent() {
  * Adds a job to the queue that pings all known hosts and updates their status in the database
  */
 exports.pingHosts = function() {
-	info('Running ping known hosts')
+	info('Ping hosts: started')
 	const timer = startTimer()
 	queue.add(pingKnownHosts)
-		.then(() => timer.done('Pinging known hosts done'))
-		.catch(err => warn('Pinging known hosts failed'))
+		.then(() => timer.done('Ping hosts: completed'))
+		.catch(err => warn('Ping hosts: failed', err.message))
 }
 
 /**
@@ -81,13 +127,12 @@ exports.pingHosts = function() {
  * folders and doing some postprocesing
  */
 exports.runFullDiscovery = function() {
-	info('Running full discovery')
+	info('Full discovery: started')
 	const timer = startTimer()
 	queue.addAll([
 		discoverNewHosts,
-		pingKnownHosts,
 		indexKnownHosts,
 		postProcessing
-	]).then(() => timer.done('Full discovery done'))
-		.catch(err => warn('Full discovery failed', err.message))
+	]).then(() => timer.done('Full discovery: completed'))
+		.catch(err => warn('Full discovery: failed', err.message))
 }

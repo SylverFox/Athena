@@ -4,28 +4,33 @@ const NeDB = require('nedb-promises')
 
 let db = {}
 // load collections
-db.hosts = NeDB.create({filename: config.get('database.location')+'hosts.db'})
-db.shares = NeDB.create({filename: config.get('database.location')+'shares.db'})
-db.files = NeDB.create({filename: config.get('database.location')+'files.db'})
-db.scans = NeDB.create({filename: config.get('database.location')+'scans.db'})
-db.keywords = NeDB.create({filename: config.get('database.location')+'keywords.db'})
+db.hosts = NeDB.create({filename: config.get('database.location')+'hosts.db', autoload: true})
+db.shares = NeDB.create({filename: config.get('database.location')+'shares.db', autoload: true})
+db.files = NeDB.create({filename: config.get('database.location')+'files.db', autoload: true})
+db.scans = NeDB.create({filename: config.get('database.location')+'scans.db', autoload: true})
+db.keywords = NeDB.create({filename: config.get('database.location')+'keywords.db', autoload: true})
 
 // ensure indexes on collections
 db.hosts.ensureIndex({fieldName: 'ip', unique: true})
 db.hosts.ensureIndex({fieldName: 'hostname', unique: true})
-db.shares.ensureIndex({fieldName: 'hostId', unique: true})
-db.shares.ensureIndex({fieldName: 'sharename', unique: true})
-db.files.ensureIndex({fieldName: 'shareId', unique: true})
-db.files.ensureIndex({fieldName: 'filename'})
+db.shares.ensureIndex({fieldName: 'hostId'})
+db.shares.ensureIndex({fieldName: 'sharename'})
+// db.files.ensureIndex({fieldName: 'shareId'})
+// db.files.ensureIndex({fieldName: 'filename'})
 
-/**
- * Splits a filename into specific parts so they can be used by search
- * @param {string} filename 
- */
-function extractKeywords(filename) {
-	// TODO
-	debug('extract keywords not implemented')
+/* DB FUNCTIONS */
+
+exports.compactDB = function() {
+	return Promise.all([
+		db.hosts.persistence.compactDatafile(),
+		db.shares.persistence.compactDatafile(),
+		db.files.persistence.compactDatafile(),
+		db.scans.persistence.compactDatafile(),
+		db.keywords.persistence.compactDatafile(),
+	])
 }
+
+/* HOSTS FUNCTIONS */
 
 /**
  * Returns the host with the specified Id
@@ -45,7 +50,8 @@ exports.findHostByName = hostname => db.hosts.findOne({hostname})
 exports.findHosts = () => db.hosts.find({})
 
 /**
- * Returns all online hosts. Hosts are considered online when they were last seen in the past 10 minutes
+ * Returns all online hosts. Hosts are considered online when they were last seen in the past 
+ * 10 minutes
  */
 exports.findOnlineHosts = () => db.hosts.find({lastseen: {$gt: new Date(Date.now() - 10 * 60000)}})
 
@@ -55,10 +61,10 @@ exports.findOnlineHosts = () => db.hosts.find({lastseen: {$gt: new Date(Date.now
 exports.findHostCount = () => db.hosts.count()
 
 /**
- * Updates the last time seen of the host with the specified ip with the current date
- * @param {string} ip
+ * Updates the last time seen of the host with the specified id with the current date
+ * @param {string} _id
  */
-exports.updateLastseen = ip => db.hosts.update({ip}, {$set: {lastseen: new Date()}})
+exports.updateLastseen = _id => db.hosts.update({_id}, {$set: {lastseen: new Date()}})
 
 /**
  * Upserts a host with its info and the current time
@@ -66,7 +72,7 @@ exports.updateLastseen = ip => db.hosts.update({ip}, {$set: {lastseen: new Date(
  */
 exports.upsertHost = host => db.hosts.update(
 	{ip: host.ip},
-	{$set: {hostname: host.hostname, ip: host.ip, lastseen: new Date()}},
+	{$set: {hostname: host.hostname, ip: host.ip, lastseen: host.online ? new Date() : 0}},
 	{upsert: true}
 )
 
@@ -75,6 +81,8 @@ exports.upsertHost = host => db.hosts.update(
  * @param {object[]} hosts
  */
 exports.upsertHosts = hosts => Promise.all(hosts.map(exports.upsertHost))
+
+/* SHARES FUNCTIONS */
 
 /**
  * Finds a share by the specified ID
@@ -92,31 +100,97 @@ exports.findShareByName = sharename => db.shares.findOne({sharename})
  * Upserts a share with the given share object
  * @param {object} share
  */
-exports.upsertShare = share => db.shares.update(
-	{hostId: share.hostid, sharename: share.sharename},
-	{$set: {filecount: share.filecount, size: share.size}},
-	{$upsert: true}
+exports.upsertShare = (hostId, share) => db.shares.update(
+	{hostId: hostId, sharename: share.name},
+	{$set: {hostId: hostId, sharename: share.name, filecount: share.filecount, size: share.size}},
+	{upsert: true}
 )
 
+/* FILES FUNCTIONS */
+
+/**
+ * Inserts a file object with the give shareId into the db
+ * @param {string} shareId
+ * @param {object} file
+ */
+exports.insertFile = (shareId, file) => db.files.insert(Object.assign({shareId}, file))
+
+/**
+ * Inserts files in bulk and tags it with the shareId
+ * @param {string} shareId
+ * @param {object[]} files
+ */
+exports.insertFiles = (shareId, files) => db.files.insert(
+	files.map(f => {
+		f.shareId = shareId
+		return f
+	})
+)
+
+/**
+ * Removes all the files from the db with the given shareId
+ * @param {string} shareId
+ */
+exports.removeFiles = shareId => db.files.remove({shareId}, {multi: true})
+
+/**
+ * Replaces all files from the share with the given Id
+ */
+exports.replaceFilesOfShare = (shareId, files) => {
+	return db.files.remove({shareId}, {multi: true}).then(
+		() => db.files.insert(files.map(f => {
+			f.shareId = shareId
+			return f
+		}))
+	)
+}
+
+
+/* SCANS FUNCTIONS */
+
+/**
+ * Retrieves the last scan result by its task name
+ * @param {string} task
+ */
+exports.findLastScanByTask = task => db.scans.findOne({task: task}, {sort: {starttime: -1}})
+
+/**
+ * Inserts a new scanresult
+ * @param {string} scan
+ * @param {date} starttime
+ * @param {number} runtime
+ * @param {*} data
+ */
+exports.insertScan = (task, starttime, runtime, data) =>
+	db.scans.insert({task, starttime, runtime, data})
+
+
+/* KEYWORDS FUNCTIONS */
+
+
+/* PRIVATE FUNCTIONS */
+
+/**
+ * Splits a filename into specific parts so they can be used by search
+ * @param {string} filename 
+ */
+function extractKeywords(filename) {
+	// TODO
+	debug('extract keywords not implemented')
+	return []
+}
 
 
 
 
 
+/* OLD STUFF FROM HERE !!! */
 
 // TODO improve for partial match
 exports.findFilesByKeywords = keywords => db.files.find({$and: keywords.map(kw => {keywords: kw})}, {limit: 100})
-exports.insertFile = (host, share, file) => db.files.insert({
-	shareId: share.id,
-	filename: file.filename,
-	path: '//' + host.hostname + '/' + share + '/' + file.path,
-	size: file.size, 
-	isDirectory: file.isDirectory, 
-	keywords: extractKeywords(filename)
-})
-exports.removeFile = (share, file) => db.files.remove({shareId: share.id, filename: file.filename})
 
-exports.getLastScanByTask = task => db.scans.findOne({task: task}, {sort: {starttime: -1}})
+
+
 // TODO NeDB does not support aggregate
 exports.getLastScans = () => {
 	return db.scans.aggregate([
