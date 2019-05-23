@@ -5,7 +5,7 @@
     "port": 8000
   },
   "discovery": {
-    "range": "130.89.166.0/24",
+    "range": "130.89.163.150/32",
     "ping": {
       "timeout": 100,
       "attempts": 1

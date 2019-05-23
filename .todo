@@ -22,6 +22,7 @@ Minor features:
   ☐ stats page, look at https://d3js.org
   ☐ better config -> https://www.npmjs.com/package/config
   ☐ NeDB scheduled compacting db
+  ☐ Check out Helmet
 
 Bugs:
   ☐ error if logs directory does not exists
@@ -33,6 +34,7 @@ Other:
   ☐ cleanup dependencies
   ☐ Change readme
   ☐ If the heap size becomes too large on indexing hosts, check for the possibility of using eventemitters
+  ☐ remove path options from config, make them hardcoded
 
 Archive:
   ✔ Implement own readdir package, smb2c does not process subsequent QUERY_DIRECTORY packets and smb2 gives only filename @done(18-11-05 23:28) @project(Discovery)

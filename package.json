@@ -11,6 +11,7 @@
   "private": true,
   "main": "server.js",
   "dependencies": {
+    "better-sqlite3": "^5.0.1",
     "body-parser": "^1.18.3",
     "config": "^2.0.1",
     "cross-env": "^5.2.0",

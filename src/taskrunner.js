@@ -24,11 +24,11 @@ async function discoverNewHosts() {
 		if(!host.hostname) return
 		await discovery.listShares(host)
 		if(!host.shares.length) return
-		await processing.upsertHost(host)
+		processing.upsertHost(host)
 	}
 
 	await Promise.all(hosts.map(task))
-	await processing.insertScan('discoverNewHosts', startTime, Date.now() - startTime)
+	processing.insertScan('discoverNewHosts', startTime, Date.now() - startTime)
 }
 
 /**
@@ -38,15 +38,15 @@ async function pingKnownHosts() {
 	// debug('starting pingknownhosts')
 	const startTime = Date.now()
 
-	const hosts = await processing.findHosts()
+	const hosts = processing.findHosts()
 	const task = async host => {
 		await discovery.ping(host)
 		if(!host.online) return
-		await processing.updateLastseen(host._id)
+		processing.updateLastseen(host.id)
 	}
 
 	await Promise.all(hosts.map(task))
-	await processing.insertScan('pingKnownHosts', startTime, Date.now() - startTime)
+	processing.insertScan('pingKnownHosts', startTime, Date.now() - startTime)
 }
 
 /**
@@ -56,7 +56,7 @@ async function indexKnownHosts() {
 	// debug('starting indexknownhosts')
 	const startTime = Date.now()
 
-	const hosts = await processing.findHosts()
+	const hosts = processing.findHosts()
 	const hostTask = async host => {
 		await discovery.listShares(host)
 		if(!host.shares.length) {debug('no shares on', host.hostname); return}
@@ -65,14 +65,14 @@ async function indexKnownHosts() {
 	const shareTask = async (host, share) => {
 		// debug('starting share task on',host.hostname,share.name)
 		// upsert share to make sure it exists
-		await processing.upsertShare(host._id, share)
+		processing.upsertShare(host.id, share)
 		// get the id of that share
-		let shareId = await processing.findShareByName(share.name)
+		let shareId = processing.findShareByName(share.name)
 		if(!shareId) {debug('no share id returned'); return}
-		shareId = shareId._id
+		shareId = shareId.id
 
 		// remove all files of this share
-		await processing.removeFiles(shareId)
+		processing.removeFiles(shareId)
 
 		// create a new event emitter to process data in batches
 		const indexEmitter = new events.EventEmitter()
@@ -83,19 +83,17 @@ async function indexKnownHosts() {
 		// start indexing and wait for completion
 		await discovery.indexShare(host, share, indexEmitter)
 		// update share information
-		await processing.upsertShare(host._id, share)
+		processing.upsertShare(host.id, share)
 	}
 
 	await Promise.all(hosts.map(hostTask))
-	await processing.insertScan('indexKnownHosts', startTime, Date.now() - startTime)
+	processing.insertScan('indexKnownHosts', startTime, Date.now() - startTime)
 }
 
 /**
  * Does post processing on indexed hosts, such as building keyword indexes
  */
 async function postProcessing() {
-	// compact the datastore first
-	await processing.compactDB()
 
 	// return processing.buildFileIndex()
 	// 	.then(processing.buildDirectoryIndex)
@@ -134,5 +132,5 @@ exports.runFullDiscovery = function() {
 		indexKnownHosts,
 		postProcessing
 	]).then(() => timer.done('Full discovery: completed'))
-		.catch(err => warn('Full discovery: failed', err.message))
+		.catch(err => warn('Full discovery: failed', err))
 }

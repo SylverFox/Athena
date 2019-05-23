@@ -29,7 +29,6 @@ scans
 	- task
 	- starttime
 	- runtime
-	- data
 
 keywords
 	- _id
