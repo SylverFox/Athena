@@ -26,7 +26,8 @@ export default new Router({
     {
       path: '/search',
       name: 'search',
-      component: Search
+      component: Search,
+      props: true
     },
     {
       path: '/stats',
@@ -37,6 +38,11 @@ export default new Router({
       path: '/watch',
       name: 'watch',
       component: Watch
+    },
+    {
+      path: '*',
+      name: '404',
+      redirect: { name: 'home' }
     }
   ]
 })

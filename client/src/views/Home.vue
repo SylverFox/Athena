@@ -12,14 +12,14 @@
 		)
 		.title-bar
 			h1 Athena
-			form(action='/search', method='post', id='searchform')
+			form#searchform(v-on:submit.prevent="search")
 				input#search.form-control(
 					type='text',
-					name='search',
+					v-model.trim='query'
 					autocomplete='off',
-					placeholder='search athena',
-					value=query
+					placeholder='search athena'
 				)
+		p= helpers
 
 </template>
 
@@ -27,12 +27,20 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 import VueParticles from 'vue-particles'
+import helpers from '@/mixins/helpers'
 
 Vue.use(VueParticles)
 
-@Component()
+@Component({
+	mixins: [helpers]
+})
 class Home extends Vue {
 	name = 'Home'
+	query = ''
+
+	search() {
+		this.$router.push({ name: 'search', params: { q: this.query } })
+	}
 }
 
 export default Home
