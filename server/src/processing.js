@@ -1,44 +1,6 @@
-const Database = require('better-sqlite3')
+const db = require('./models')
 const config = require('config')
-const {info, debug} = require('winston')
-
-const db = new Database(process.cwd() + '/db/athena.db')
-
-// db.exec('DROP TABLE IF EXISTS hosts; DROP TABLE IF EXISTS shares; DROP TABLE IF EXISTS files')
-
-db.exec(`CREATE TABLE IF NOT EXISTS hosts (
-	id INTEGER PRIMARY KEY,
-	ip TEXT NOT NULL UNIQUE,
-	hostname TEXT NOT NULL UNIQUE,
-	lastseen DATETIME DEFAULT CURRENT_TIMESTAMP
-)`)
-
-db.exec(`CREATE TABLE IF NOT EXISTS shares (
-	id INTEGER PRIMARY KEY,
-	host_id INTEGER,
-	sharename TEXT,
-	filecount INTEGER DEFAULT 0,
-	size INTEGER DEFAULT 0,
-	FOREIGN KEY (host_id) REFERENCES hosts(id),
-	CONSTRAINT unq UNIQUE (host_id, sharename)
-)`)
-
-db.exec(`CREATE TABLE IF NOT EXISTS files (
-	id INTEGER PRIMARY KEY,
-	share_id INTEGER,
-	filename TEXT,
-	path TEXT,
-	size INTEGER,
-	is_directory INTEGER,
-	FOREIGN KEY (share_id) REFERENCES shares(id)
-)`)
-
-db.exec(`CREATE TABLE IF NOT EXISTS scans (
-	id INTEGER PRIMARY KEY,
-	task TEXT,
-	starttime DATETIME,
-	runtime INTEGER
-)`)
+const {info, error, debug} = require('winston')
 
 exports.findHostById = id => db.prepare('SELECT * FROM hosts WHERE id = ?').get(id)
 exports.findHosts = () => db.prepare('SELECT * FROM hosts').all()

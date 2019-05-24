@@ -107,7 +107,7 @@ function indexStreamableContent() {
 		.catch(err => warn('building streamable index failed', err))
 }
 
-/** OUTSIDE FUNCTIONS **/
+/** PUBLIC FUNCTIONS **/
 
 /**
  * Adds a job to the queue that pings all known hosts and updates their status in the database

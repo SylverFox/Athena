@@ -1,5 +1,4 @@
 const levenshtein = require('fast-levenshtein')
-
 const processing = require('./processing')
 
 exports.search = function(query, options) {
