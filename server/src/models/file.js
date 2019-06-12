@@ -1,6 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	const File = sequelize.define(
-		'file',
+	const File = sequelize.define('File',
 		{
 			filename: DataTypes.STRING,
 			path: DataTypes.STRING,
@@ -12,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
 	)
 
 	File.associate = models => {
-		File.belongsTo(models.share)
+		File.belongsTo(models.Share)
 	}
 
 	return File

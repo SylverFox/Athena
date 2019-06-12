@@ -42,7 +42,6 @@ app.use(express.urlencoded({ extended: true }))
 app.use(responseTime())
 app.use(ipfilter(config.webserver.allowedHosts))
 // Todo better package than ipfilter
-app.set('port', )
 
 app.get('*', (req, res) => res.send({
 	message: 'Welcome to the beginning of nothingness.',

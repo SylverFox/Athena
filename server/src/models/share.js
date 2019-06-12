@@ -1,16 +1,24 @@
 module.exports = (sequelize, DataTypes) => {
-	const Share = sequelize.define(
-		'share',
-		{
-			sharename: DataTypes.STRING,
-		},{
-			timestamps: true
+	const Share = sequelize.define('Share', {
+		name: {
+			type: DataTypes.STRING,
+			required: true
+		},
+		filecount: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0
+		},
+		size: {
+			type: DataTypes.INTEGER,
+			defaultValue: 0
 		}
-	)
+	},{
+		timestamps: true
+	})
 
 	Share.associate = models => {
-		Share.belongsTo(models.host)
-		Share.hasMany(models.file)
+		Share.belongsTo(models.Host)
+		Share.hasMany(models.File)
 	}
 
 	return Share

@@ -1,9 +1,11 @@
 const events = require('events')
 const {info, warn, debug, startTimer} = require('winston')
 const PQueue = require('p-queue')
+const config = require('config')
+const iprange = require('iprange')
 
 const discovery = require('./discovery')
-const processing = require('./processing')
+const db = require('./models')
 
 const queue = new PQueue({concurrency: 1})
 
@@ -14,21 +16,38 @@ const queue = new PQueue({concurrency: 1})
  */
 async function discoverNewHosts() {
 	// debug('starting discovernewhosts')
-	const startTime = new Date()
+	const starttime = new Date()
 
-	const hosts = await discovery.build()
-	const task = async host => {
-		await discovery.ping(host)
-		if(!host.online) return
-		await discovery.reverseLookup(host)
-		if(!host.hostname) return
-		await discovery.listShares(host)
-		if(!host.shares.length) return
-		processing.upsertHost(host)
+	const hostrange = iprange(config.discovery.range)
+	
+	const task = async ip => {
+		const online = await discovery.ping(ip)
+		if(!online) return
+		const hostname = await discovery.reverseLookup(ip)
+		if(!hostname) return
+		const shares = await discovery.listShares(ip)
+		if(!shares.length) return
+		
+		const [newhost] = await db.Host.findOrCreate({
+			where: { ip },
+			defaults: { ip, hostname },
+		})
+		// set hostname if it has been changed since last scan
+		newhost.set('hostname', hostname)
+
+		for(let share of shares) {
+			await db.Share.findOrCreate({
+				where: { name: share, HostId: newhost.id }
+			})
+		}
 	}
 
-	await Promise.all(hosts.map(task))
-	processing.insertScan('discoverNewHosts', startTime, Date.now() - startTime)
+	await Promise.all(hostrange.map(task))
+	await db.Scan.create({
+		task: 'discoverNewHosts',
+		starttime: starttime,
+		runtime: Date.now() - starttime
+	})
 }
 
 /**
@@ -36,17 +55,25 @@ async function discoverNewHosts() {
  */
 async function pingKnownHosts() {
 	// debug('starting pingknownhosts')
-	const startTime = Date.now()
+	const starttime = new Date()
 
-	const hosts = processing.findHosts()
 	const task = async host => {
-		await discovery.ping(host)
-		if(!host.online) return
-		processing.updateLastseen(host.id)
+		const online = await discovery.ping(host)
+
+		if(online) {
+			host.set('lastseen', new Date())
+			host.save()
+		}
 	}
 
+	const hosts = await db.Host.findAll()	
 	await Promise.all(hosts.map(task))
-	processing.insertScan('pingKnownHosts', startTime, Date.now() - startTime)
+
+	await db.Scan.create({
+		task: 'pingKnownHosts',
+		starttime: starttime,
+		runtime: Date.now() - starttime
+	})
 }
 
 /**
@@ -54,40 +81,65 @@ async function pingKnownHosts() {
  */
 async function indexKnownHosts() {
 	// debug('starting indexknownhosts')
-	const startTime = Date.now()
+	const starttime = new Date()
 
-	const hosts = processing.findHosts()
+	const hosts = await db.Host.findAll()
+
 	const hostTask = async host => {
-		await discovery.listShares(host)
-		if(!host.shares.length) {debug('no shares on', host.hostname); return}
-		await Promise.all(host.shares.map(share => shareTask(host, share)))
-	}
-	const shareTask = async (host, share) => {
-		// debug('starting share task on',host.hostname,share.name)
-		// upsert share to make sure it exists
-		processing.upsertShare(host.id, share)
-		// get the id of that share
-		let shareId = processing.findShareByName(share.name)
-		if(!shareId) {debug('no share id returned'); return}
-		shareId = shareId.id
+		// update shares list
+		let shares = await discovery.listShares(host.ip)
+		if(!shares.length) {
+			debug('no shares on', host.hostname)
+			return
+		}
 
-		// remove all files of this share
-		processing.removeFiles(shareId)
+		// find or create in DB
+		let newshares = []
+		for(let share of shares) {
+			const [newshare] = await db.Share.findOrCreate({
+				where: { name: share, HostId: host.id }
+			})
+			newshares.push(newshare)
+		}
+
+		await Promise.all(newshares.map(share => shareTask(host, share)))
+	}
+
+	const shareTask = async (host, share) => {
+		debug('starting share task on', host.hostname, share.name)
+
+		share.removeFiles()
 
 		// create a new event emitter to process data in batches
 		const indexEmitter = new events.EventEmitter()
+		let size = 0, filecount = 0
 		indexEmitter.on('data', indexedFiles => {
+			const files = indexedFiles.filter(f => !f.isDirectory)
+			size += files.reduce((a,b) => a + b.size, 0)
+			filecount += files.length
+
+			// append share id
+			indexedFiles = indexedFiles.map(f => {
+				f.ShareId = share.id
+				return f
+			})
 			// insert into database
-			processing.insertFiles(shareId, indexedFiles)
+			db.File.bulkCreate(indexedFiles)
 		})
 		// start indexing and wait for completion
 		await discovery.indexShare(host, share, indexEmitter)
 		// update share information
-		processing.upsertShare(host.id, share)
+		share.set('size', size)
+		share.set('filecount', filecount)
+		share.save()
 	}
 
 	await Promise.all(hosts.map(hostTask))
-	processing.insertScan('indexKnownHosts', startTime, Date.now() - startTime)
+	await db.Scan.create({
+		task: 'indexKnownHosts',
+		starttime: starttime,
+		runtime: Date.now() - starttime
+	})
 }
 
 /**
@@ -102,9 +154,9 @@ async function postProcessing() {
 
 // TODO for later releases
 function indexStreamableContent() {
-	return processing.buildStreamableIndex()
-		.then(() => info('done indexing streamable content'))
-		.catch(err => warn('building streamable index failed', err))
+	// return processing.buildStreamableIndex()
+	// 	.then(() => info('done indexing streamable content'))
+	// 	.catch(err => warn('building streamable index failed', err))
 }
 
 /** PUBLIC FUNCTIONS **/

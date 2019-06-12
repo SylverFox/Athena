@@ -5,7 +5,6 @@ const tcpping = require('tcp-ping')
 const smbEnumerateShares = require('smb-enumerate-shares')
 const smbEnumerateFiles = require('smb-enumerate-files')
 const PQueue = require('p-queue')
-const iprange = require('iprange')
 const winston = require('winston')
 const {debug} = winston
 
@@ -25,54 +24,47 @@ const dnsReverse = util.promisify(dns.reverse)
 const queue = new PQueue({concurrency: config.discovery.threads})
 
 /**
- * prepares objects for the discovery pipeline based on the iprange in the config
- */
-exports.build = async () => iprange(config.discovery.range).map(ip => ({ip: ip}))
-
-/**
  * Pings the given host on the specified port to check if it is online and the port is accessible
- * @param {object} host
+ * @param {string} ip
  * @param {number} port
  */
-exports.ping = async function(host, port = 445) {
+exports.ping = function(ip, port = 445) {
 	const options = {
-		address: host.ip,
+		address: ip,
 		port: port,
 		timeout: config.discovery.ping.timeout,
 		attempts: config.discovery.ping.attempts		
 	}
-	host.online = await queue.add(() => pingHost(options))
+	const online = queue.add(async () => pingHost(options))
 		.then(res => res.min !== undefined)
-		.catch(err => {
-			//debug(err)
-			return false
-		})
-	return host
+		.catch(() => false)
+	
+	return online
 }
 
 /**
  * Does a reverse lookup on the specified host.
- * @param {object} host
+ * @param {string} ip
  */
-exports.reverseLookup = async function(host) {
-	host.hostname = await queue.add(() => dnsReverse(host.ip))
+exports.reverseLookup = function(ip) {
+	const hostname = queue.add(async () => dnsReverse(ip))
 		.then(hostnames => hostnames[0])
 		.catch(err => debug(err))
-	return host
+	return hostname
 }
 
 /**
  * Lists the SMB shares of a host.
- * @param {object} host
+ * @param {object} ip
  */
-exports.listShares = async function(host) {
-	host.shares = await queue.add(() => smbEnumerateShares({host: host.ip, timeout: 10000}))
-		.then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => ({name: s.name})))
+exports.listShares = function(ip) {
+	const shares = queue.add(async () => smbEnumerateShares({host: ip, timeout: 10000}))
+		.then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
 		.catch(err => {
-			//debug(host.hostname, err.message)
+			debug(ip, err.message)
 			return []
 		})
-	return host
+	return shares
 }
 
 /**
@@ -134,7 +126,13 @@ exports.indexShare = async function(host, share, indexEmitter) {
 	return host
 }
 
-// TODO doc
+/**
+ * Recursively indexes a share on a host using the provided Smbsession. Starting path option is the
+ * first entry point on the share. Uses the provided emitter to emit files found on the path
+ * @param {object} session 
+ * @param {string} path 
+ * @deprecated
+ */
 async function indexDirectoryRecursive(session, emitter, path) {
 	let size = 0, filecount = 0
 
@@ -167,50 +165,4 @@ async function indexDirectoryRecursive(session, emitter, path) {
 	emitter.emit('data', files)
 
 	return {size, filecount}
-}
-
-/**
- * Recursively indexes a share on a host using the provided Smbsession. Starting path option is the
- * first entry point on the share. Return an object containing the total size of indexed files and
- * the index, an array of objects.
- * @param {object} session 
- * @param {string} path 
- * @deprecated
- */
-async function indexDirectoryRecursive_OLD(session, path) {
-	let size = 0
-	let filecount = 0
-	let index = []
-
-	let files = []
-	try {
-		files = await session.enumerate(path)
-		files = files.map(f => ({
-			filename: f.filename,
-			size: f.size,
-			isDirectory: f.directory
-		}))
-	} catch(err) {
-		smblogger.error(session.options.host, session.options.share, err.message)
-	}
-	
-	// sort by files first, then alphabetically
-	files.sort((a,b) => a.isDirectory - b.isDirectory || a.filename.localeCompare(b.filename))
-
-	for(let file of files) {
-		if(file.isDirectory) {
-			const subindex = await indexDirectoryRecursive(session, path + file.filename + '\\')
-			size += subindex.size
-			filecount += subindex.filecount
-			file.size = subindex.size
-			index.push(Object.assign({path}, file))
-			index = index.concat(subindex.index)
-		} else {
-			size += file.size
-			filecount++
-			index.push(Object.assign({path}, file))
-		}
-	}
-
-	return {size, filecount, index}
 }
