@@ -12,7 +12,7 @@ Major features:
 
 Minor features:
   ☐ schedule task on first startup (populate database on first run)
-  ☐ support for SMB1 @low
+  ✘ support for SMB1 @low @cancelled(19-06-13 01:19)
   ☐ favicon
   ☐ statistics page
   ☐ about page
@@ -20,8 +20,8 @@ Minor features:
   ☐ general documentation
   ☐ custom error pages
   ☐ stats page, look at https://d3js.org
-  ☐ better config -> https://www.npmjs.com/package/config
-  ☐ NeDB scheduled compacting db
+  ✔ better config -> https://www.npmjs.com/package/config @done(19-06-13 01:19)
+  ✘ NeDB scheduled compacting db @cancelled(19-06-13 01:19)
   ☐ Check out Helmet
 
 Bugs:

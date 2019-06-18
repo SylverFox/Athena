@@ -33,7 +33,7 @@
     "console.table": "^0.8.0"
   },
   "scripts": {
-    "start": "cross-env Node_ENV=development& node server.js",
-    "forever": "forever --minUptime 5000 --spinSleepTime 5000 -w server.js"
+    "start": "cross-env NODE_ENV=development& node server.js",
+    "dev": "pm2 start server.js --watch"
   }
 }
