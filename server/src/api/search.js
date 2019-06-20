@@ -20,8 +20,8 @@ search.get('/', (req, res, next) => {
 
 	const query = db.File.findAll({
 		where: {
-			[Sequelize.Op.Or]: keywords.map(kw => 
-				({ filename: { [Sequelize.Op.like]: kw } })	
+			[Sequelize.Op.or]: keywords.map(kw => 
+				({ filename: { [Sequelize.Op.substring]: kw } })	
 			)
 		}
 	})
