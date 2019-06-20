@@ -11,21 +11,21 @@
   "private": true,
   "main": "server.js",
   "dependencies": {
-    "config": "^2.0.1",
+    "config": "^2.0.2",
     "cross-env": "^5.2.0",
-    "express": "^4.16.4",
+    "express": "^4.17.1",
     "express-ipfilter": "^1.0.1",
     "fast-levenshtein": "^2.0.6",
     "ip-range-check": "0.0.2",
     "iprange": "^0.1.0",
-    "node-schedule": "^1.3.0",
-    "p-queue": "^3.0.0",
+    "node-schedule": "^1.3.2",
+    "p-queue": "^3.2.0",
     "response-time": "^2.3.2",
     "send": "^0.16.2",
-    "sequelize": "^5.8.6",
-    "smb-enumerate-files": "^1.0.1",
+    "sequelize": "^5.8.10",
+    "smb-enumerate-files": "^1.0.2",
     "smb-enumerate-shares": "^1.1.2",
-    "sqlite3": "^4.0.8",
+    "sqlite3": "^4.0.9",
     "tcp-ping": "^0.1.1",
     "winston": "^2.4.4"
   },
@@ -33,7 +33,8 @@
     "console.table": "^0.8.0"
   },
   "scripts": {
-    "start": "cross-env NODE_ENV=development& node server.js",
+    "start": "cross-env NODE_ENV=development node server.js",
+    "forever": "forever --minUptime 5000 --spinSleepTime 5000 -w server.js",
     "dev": "pm2 start server.js --watch"
   }
 }
