@@ -43,22 +43,23 @@ app.use(responseTime())
 
 app.use(IpFilter(config.webserver.allowedHosts, { mode: 'allow', logLevel: 'deny' }))
 
-// Error handlers
-app.use((err, req, res, next) => {
-	if (err instanceof IpDeniedError) {
-		res.status(401)
-		res.send({ success: false, error: 'Not allowed. Request IP not from campusnet' })
-	} else {
-		res.status(err.status)
-		res.send({ success: false, error: 'uknown error' })
-	}
 
-	next()
-})
 
 // API routes
 app.use('/search', api.search)
 app.use('/stats', api.stats)
+
+// Error handlers
+app.use((err, req, res, next) => {
+	if (err instanceof IpDeniedError) {
+		res.status(401).send({error: 'Not allowed. Request IP not from campusnet' })
+	} else {
+		winston.error(err)
+		res.status(500).send({error: err.message})
+	}
+
+	next()
+})
 
 const port = config.webserver.port
 app.listen(port, () => winston.info(`Webserver running on http://localhost:${port}`))
