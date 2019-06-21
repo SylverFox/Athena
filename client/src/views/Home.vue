@@ -27,7 +27,7 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 import VueParticles from 'vue-particles'
-import helpers from '@/mixins/helpers'
+import helpers from '../mixins/helpers'
 
 Vue.use(VueParticles)
 

@@ -16,14 +16,14 @@ const api = require('./src/api')
 /* INIT WINSTON */
 
 if(!fs.existsSync(config.logging.location))
-	fs.mkdirSync(config.logging.location)
+  fs.mkdirSync(config.logging.location)
 
 winston.level = config.logging.level
 winston.remove(winston.transports.Console)
 winston.add(winston.transports.Console, {colorize: true, timestamp: true})
 winston.add(winston.transports.File, {
-	filename: config.logging.location+'/athena.log',
-	timestamp: true
+  filename: config.logging.location+'/athena.log',
+  timestamp: true
 })
 
 
@@ -51,14 +51,14 @@ app.use('/stats', api.stats)
 
 // Error handlers
 app.use((err, req, res, next) => {
-	if (err instanceof IpDeniedError) {
-		res.status(401).send({error: 'Not allowed. Request IP not from campusnet' })
-	} else {
-		winston.error(err)
-		res.status(500).send({error: err.message})
-	}
+  if (err instanceof IpDeniedError) {
+    res.status(401).send({error: 'Not allowed. Request IP not from campusnet' })
+  } else {
+    winston.error(err)
+    res.status(500).send({error: err.message})
+  }
 
-	next()
+  next()
 })
 
 const port = config.webserver.port

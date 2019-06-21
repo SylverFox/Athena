@@ -10,8 +10,8 @@
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import Header from './components/Header'
+import Footer from './components/Footer'
 
 @Component({
 	components: {
