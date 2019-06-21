@@ -4,12 +4,12 @@ const fs = require('fs')
 const winston = require('winston')
 const config = require('config')
 const express = require('express')
+const cors = require('cors')
 const responseTime = require('response-time')
 const schedule = require('node-schedule')
 const {IpFilter, IpDeniedError} = require('express-ipfilter')
 
 // const taskrunner = require('./src/taskrunner')
-// const api = require('./src/api')
 // const stream = require('./src/stream')
 const api = require('./src/api')
 
@@ -40,10 +40,8 @@ app.use(express.static('public'))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true })) 
 app.use(responseTime())
-
+app.use(cors())
 app.use(IpFilter(config.webserver.allowedHosts, { mode: 'allow', logLevel: 'deny' }))
-
-
 
 // API routes
 app.use('/search', api.search)

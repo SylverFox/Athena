@@ -48,6 +48,9 @@ class Search extends Vue {
 
   search() {
     console.log('searching', this.query)
+    Vue.axios.get('search?q=test')
+      .then(res => console.log(res.data))
+      .catch(console.log)
   }
 }
 
