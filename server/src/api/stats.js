@@ -5,26 +5,26 @@ const db = require('../models')
  * Retrieve basic server statistics
  */
 stats.get('/', (req, res, next) =>
-	db.Scan.findOne({
-		attributes: ['task', 'starttime', 'runtime'],
-		where: { task: 'indexKnownHosts' },
-		order: [ [ 'createdAt', 'DESC' ]]
-	}).then(result => res.json(result))
-		.catch(err => next(err))
+  db.Scan.findOne({
+    attributes: ['task', 'starttime', 'runtime'],
+    where: { task: 'indexKnownHosts' },
+    order: [ [ 'createdAt', 'DESC' ]]
+  }).then(result => res.json(result))
+    .catch(err => next(err))
 )
 
 /**
  * Retrieve hosts statistics
  */
 stats.get('/hosts', (req, res, next) => {
-	db.Host.findAll({
-		attributes: ['hostname', 'lastseen'],
-		include: [{
-			model: db.Share,
-			attributes: ['name', 'filecount', 'size']
-		}]
-	}).then(result => res.json(result))
-		.catch(err => next(err))
+  db.Host.findAll({
+    attributes: ['hostname', 'lastseen'],
+    include: [{
+      model: db.Share,
+      attributes: ['name', 'filecount', 'size']
+    }]
+  }).then(result => res.json(result))
+    .catch(err => next(err))
 })
 
 module.exports = stats
