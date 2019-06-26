@@ -1,15 +1,19 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 
-import Home from './views/Home.vue'
-import About from './views/About.vue'
-import Search from './views/Search.vue'
-import Stats from './views/Stats.vue'
-import Watch from './views/Watch.vue'
+import Main from './views/Main'
+import Home from './views/Home'
+import About from './views/About'
+import Search from './views/Search'
+import Stats from './views/Stats'
+import Watch from './views/Watch'
+import PageNotFound from './views/errors/PageNotFound'
+import Forbidden from './views/errors/Forbidden'
+import ServiceUnavailable from './views/errors/ServiceUnavailable'
 
 Vue.use(Router)
 
-export default new Router({
+const router = new Router({
   mode: 'history',
   base: process.env.BASE_URL,
   routes: [
@@ -19,30 +23,49 @@ export default new Router({
       component: Home
     },
     {
-      path: '/about',
-      name: 'about',
-      component: About
+      path: '/',
+      component: Main,
+      children: [
+        {
+          path: 'about',
+          name: 'about',
+          component: About
+        },
+        {
+          path: 'search',
+          name: 'search',
+          component: Search,
+          props: true
+        },
+        {
+          path: 'stats',
+          name: 'stats',
+          component: Stats
+        },
+        {
+          path: 'watch',
+          name: 'watch',
+          component: Watch,
+          props: true
+        }
+      ]
     },
     {
-      path: '/search',
-      name: 'search',
-      component: Search,
-      props: true
+      path: '503',
+      name: 'serviceUnavailable',
+      component: ServiceUnavailable
     },
     {
-      path: '/stats',
-      name: 'stats',
-      component: Stats
-    },
-    {
-      path: '/watch',
-      name: 'watch',
-      component: Watch
+      path: '403',
+      name: 'forbidden',
+      component: Forbidden
     },
     {
       path: '*',
       name: '404',
-      redirect: { name: 'home' }
+      component: PageNotFound
     }
   ]
 })
+
+export default router

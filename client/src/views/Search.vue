@@ -1,12 +1,12 @@
 <template lang="pug">
   b-container.flex-column.justify-content-center
     b-container.searchcontainer.my-3
-      form(v-on:submit.prevent="search")
+      b-form(@submit.prevent="search")
         b-form-row
           b-col(cols="auto", md="5")
-            b-form-input(v-model='query', trim, autofocus, autocomplete='off')
+            b-form-input(v-model='query', trim, autofocus, autocomplete="off")
           b-col(cols="auto")
-            b-button(type='submit') Search
+            b-button(type="submit") Search
 
     b-container.resultcontainer.my-3
       .text-center.mt-5

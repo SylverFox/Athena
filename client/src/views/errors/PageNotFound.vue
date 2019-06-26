@@ -1,5 +1,5 @@
 <template lang="pug">
-  p Stats page - Coming soon
+  p 404
 </template>
 
 <script>
@@ -7,11 +7,11 @@ import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 
 @Component()
-class Stats extends Vue {
-  name = 'Stats'
+class PageNotFound extends Vue {
+  name = 'PageNotFound'
 }
 
-export default Stats
+export default PageNotFound
 </script>
 
 <style lang="stylus" scoped>

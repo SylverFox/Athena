@@ -1,5 +1,5 @@
 <template lang="pug">
-  p About page
+  p About page - Coming soon
 </template>
 
 <script>

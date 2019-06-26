@@ -9,7 +9,8 @@
         b-nav-item(:active="$route.name === 'api'"    :to="{ name: 'api' }", disabled) Api
         b-nav-item(:active="$route.name === 'about'"  :to="{ name: 'about' }") About
       b-navbar-nav.ml-auto
-        b-nav-text V #{process.env.npm_package_version}
+        b-nav-item(href="https://github.com/SylverFox/Athena", target="_blank")
+          | V #{process.env.npm_package_version}
 </template>
 
 <script>

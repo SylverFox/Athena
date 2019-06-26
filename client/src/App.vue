@@ -1,21 +1,13 @@
 <template lang="pug">
   #app
-    Header
     router-view
 </template>
 
 <script>
 import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
-import Header from './components/Header'
-import Footer from './components/Footer'
 
-@Component({
-  components: {
-    Header,
-    Footer
-  }
-})
+@Component()
 class App extends Vue {
   name = 'app'
 }

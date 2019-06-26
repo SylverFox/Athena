@@ -1,5 +1,5 @@
 <template lang="pug">
-  p Stats page - Coming soon
+  p 403
 </template>
 
 <script>
@@ -7,11 +7,11 @@ import Vue from 'vue'
 import { Component } from 'vue-property-decorator'
 
 @Component()
-class Stats extends Vue {
-  name = 'Stats'
+class Forbidden extends Vue {
+  name = 'Forbidden'
 }
 
-export default Stats
+export default Forbidden
 </script>
 
 <style lang="stylus" scoped>
