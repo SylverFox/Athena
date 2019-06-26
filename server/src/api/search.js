@@ -1,7 +1,7 @@
 const search = require('express').Router()
 const db = require('../models')
 const Sequelize = require('sequelize')
-const levenshtein = require('fast-levenshtein')
+// const levenshtein = require('fast-levenshtein')
 
 const MAX_RESULTS = 100
 

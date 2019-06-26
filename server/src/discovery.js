@@ -10,10 +10,10 @@ const {debug} = winston
 
 // custom logger for errors in smb scanning
 const smblogger = new (winston.Logger)({
-	level: 'debug',
-	transports: [
-		new (winston.transports.File)({filename: 'logs/smberrors.log', timestamp: true})
-	]
+  level: 'debug',
+  transports: [
+    new (winston.transports.File)({filename: 'logs/smberrors.log', timestamp: true})
+  ]
 })
 
 // promisified version of the tcp ping function
@@ -29,17 +29,17 @@ const queue = new PQueue({concurrency: config.discovery.threads})
  * @param {number} port
  */
 exports.ping = function(ip, port = 445) {
-	const options = {
-		address: ip,
-		port: port,
-		timeout: config.discovery.ping.timeout,
-		attempts: config.discovery.ping.attempts		
-	}
-	const online = queue.add(async () => pingHost(options))
-		.then(res => res.min !== undefined)
-		.catch(() => false)
+  const options = {
+    address: ip,
+    port: port,
+    timeout: config.discovery.ping.timeout,
+    attempts: config.discovery.ping.attempts		
+  }
+  const online = queue.add(async () => pingHost(options))
+    .then(res => res.min !== undefined)
+    .catch(() => false)
 	
-	return online
+  return online
 }
 
 /**
@@ -47,10 +47,10 @@ exports.ping = function(ip, port = 445) {
  * @param {string} ip
  */
 exports.reverseLookup = function(ip) {
-	const hostname = queue.add(async () => dnsReverse(ip))
-		.then(hostnames => hostnames[0])
-		.catch(err => debug(err))
-	return hostname
+  const hostname = queue.add(async () => dnsReverse(ip))
+    .then(hostnames => hostnames[0])
+    .catch(err => debug(err))
+  return hostname
 }
 
 /**
@@ -58,13 +58,13 @@ exports.reverseLookup = function(ip) {
  * @param {object} ip
  */
 exports.listShares = function(ip) {
-	const shares = queue.add(async () => smbEnumerateShares({host: ip, timeout: 10000}))
-		.then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
-		.catch(err => {
-			debug(ip, err.message)
-			return []
-		})
-	return shares
+  const shares = queue.add(async () => smbEnumerateShares({host: ip, timeout: 10000}))
+    .then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
+    .catch(err => {
+      debug(ip, err.message)
+      return []
+    })
+  return shares
 }
 
 /**
@@ -74,56 +74,56 @@ exports.listShares = function(ip) {
  * @deprecated
  */
 exports.indexHost = async function(host) {
-	for(let share of host.shares) {
-		const smbsession = smbEnumerateFiles.createSession({
-			host: host.ip,
-			share: share.name
-		})
+  for(let share of host.shares) {
+    const smbsession = smbEnumerateFiles.createSession({
+      host: host.ip,
+      share: share.name
+    })
 
-		try {
-			await smbsession.connect()
-			const result = await queue.add(() => 
-				indexDirectoryRecursive(smbsession, '')
-			).then(result => {
-				const fullname = host.hostname+'/'+share.name
-				debug('=====',fullname,'files:',result.index.length,'total size:',result.size)
-				//console.table(result.index)
-				return result
-			}).catch(err => {
-				debug(host.hostname, share.name, err)
-				return {size: 0, index: []}
-			})
-			// hook size, filecount and index to the share
-			Object.assign(share, result)
-			await smbsession.close()
-		} catch(err) {
-			smblogger.error(host.hostname, share.name, err.message)
-			continue
-		}
-	}
-	return host
+    try {
+      await smbsession.connect()
+      const result = await queue.add(() => 
+        indexDirectoryRecursive(smbsession, '')
+      ).then(result => {
+        const fullname = host.hostname+'/'+share.name
+        debug('=====',fullname,'files:',result.index.length,'total size:',result.size)
+        //console.table(result.index)
+        return result
+      }).catch(err => {
+        debug(host.hostname, share.name, err)
+        return {size: 0, index: []}
+      })
+      // hook size, filecount and index to the share
+      Object.assign(share, result)
+      await smbsession.close()
+    } catch(err) {
+      smblogger.error(host.hostname, share.name, err.message)
+      continue
+    }
+  }
+  return host
 }
 
 // TODO doc
 exports.indexShare = async function(host, share, indexEmitter) {
-	const smbsession = smbEnumerateFiles.createSession({host: host.ip, share: share.name})
-	try {
-		await smbsession.connect()
-		const result = await queue.add(() => indexDirectoryRecursive(smbsession, indexEmitter, ''))
-			.then(res => {
-				const fullname = host.hostname+'/'+share.name
-				debug('=====',fullname,'files:',res.filecount,'total size:',res.size)
-				return res
-			}).catch(err => {
-				debug(host.hostname, share.name, err)
-				return {size: 0, filecount: 0}
-			})
-		Object.assign(share, result)
-		await smbsession.close()
-	} catch(err) {
-		smblogger.error(host.hostname, share.name, err.message)
-	}
-	return host
+  const smbsession = smbEnumerateFiles.createSession({host: host.ip, share: share.name})
+  try {
+    await smbsession.connect()
+    const result = await queue.add(() => indexDirectoryRecursive(smbsession, indexEmitter, ''))
+      .then(res => {
+        const fullname = host.hostname+'/'+share.name
+        debug('=====',fullname,'files:',res.filecount,'total size:',res.size)
+        return res
+      }).catch(err => {
+        debug(host.hostname, share.name, err)
+        return {size: 0, filecount: 0}
+      })
+    Object.assign(share, result)
+    await smbsession.close()
+  } catch(err) {
+    smblogger.error(host.hostname, share.name, err.message)
+  }
+  return host
 }
 
 /**
@@ -134,35 +134,35 @@ exports.indexShare = async function(host, share, indexEmitter) {
  * @deprecated
  */
 async function indexDirectoryRecursive(session, emitter, path) {
-	let size = 0, filecount = 0
+  let size = 0, filecount = 0
 
-	let files = []
-	try {
-		files = await session.enumerate(path)
-		files = files.map(f => ({
-			filename: f.filename,
-			size: f.size,
-			isDirectory: f.directory,
-			path: path
-		}))
-	} catch(err) {
-		smblogger.error(session.options.host, session.options.share, err.message)
-	}
+  let files = []
+  try {
+    files = await session.enumerate(path)
+    files = files.map(f => ({
+      filename: f.filename,
+      size: f.size,
+      isDirectory: f.directory,
+      path: path
+    }))
+  } catch(err) {
+    smblogger.error(session.options.host, session.options.share, err.message)
+  }
 
-	for(let file of files) {
-		if(file.isDirectory) {
-			const subindex = await indexDirectoryRecursive(session, emitter, path + file.filename + '\\')
-			file.size = subindex.size
-			size += subindex.size
-			filecount += subindex.filecount
-		} else {
-			size += file.size
-			filecount += 1
-		}
-	}
+  for(let file of files) {
+    if(file.isDirectory) {
+      const subindex = await indexDirectoryRecursive(session, emitter, path + file.filename + '\\')
+      file.size = subindex.size
+      size += subindex.size
+      filecount += subindex.filecount
+    } else {
+      size += file.size
+      filecount += 1
+    }
+  }
 
-	// emit files and folders on this path
-	emitter.emit('data', files)
+  // emit files and folders on this path
+  emitter.emit('data', files)
 
-	return {size, filecount}
+  return {size, filecount}
 }

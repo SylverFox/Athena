@@ -10,6 +10,7 @@
     "url": "https://github.com/SylverFox/Athena.git"
   },
   "scripts": {
+    "lint": "vue-cli-service lint client/src & vue-cli-service lint server/src",
     "client": "vue-cli-service serve client/src/main.js",
     "build": "vue-cli-service build client/src/main.js",
     "server": "cross-env NODE_ENV=development forever --minUptime 5000 --spinSleepTime 5000 .forever.json"

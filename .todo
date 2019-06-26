@@ -1,42 +1,41 @@
 Discovery:
-  ✔ Improve indexing shares @started(18-11-05 23:27) @done(18-11-06 01:10) @lasted(1h43m4s)
   ☐ Investigate possible problems with object sizes when indexing shares @low 
   ☐ Recheck documentation @next-release
 
 Major features:
   ☐ JSON API @low 
-  ☐ query and document caching
-  ☐ create url handler
-  ☐ script to detect url handler
   ☐ FTP indexing -> npm install --save ftp
 
 Minor features:
   ☐ schedule task on first startup (populate database on first run)
-  ✘ support for SMB1 @low @cancelled(19-06-13 01:19)
   ☐ favicon
-  ☐ statistics page
+  ☐ statistics page, look at https://d3js.org
   ☐ about page
   ☐ API documentation
-  ☐ general documentation
   ☐ custom error pages
-  ☐ stats page, look at https://d3js.org
-  ✔ better config -> https://www.npmjs.com/package/config @done(19-06-13 01:19)
-  ✘ NeDB scheduled compacting db @cancelled(19-06-13 01:19)
   ☐ Check out Helmet
 
 Bugs:
-  ☐ error if logs directory does not exists
   ☐ smb2 does not list complete folder contents
   ☐ Some errors occur on smb-enumerate-shares
-  ☐ Massiv out of memory errors. Check for NeDB alternative?
 
 Other:
-  ☐ cleanup dependencies
-  ☐ Change readme
-  ☐ If the heap size becomes too large on indexing hosts, check for the possibility of using eventemitters
-  ☐ remove path options from config, make them hardcoded
+  ☐ cleanup dependencies @next-release
+  ☐ Change readme @next-release
 
 Archive:
+  ✘ query and document caching @cancelled(19-06-26 23:32) @project(Major features)
+  ✔ create url handler @done(19-06-26 23:32) @project(Major features)
+  ✔ script to detect url handler @done(19-06-26 23:32) @project(Major features)
+  ✔ general documentation @done(19-06-26 23:32) @project(Minor features)
+  ✔ error if logs directory does not exists @done(19-06-26 23:47) @project(Bugs)
+  ✔ Massiv out of memory errors. Check for NeDB alternative? @done(19-06-26 23:48) @project(Bugs)
+  ✔ If the heap size becomes too large on indexing hosts, check for the possibility of using eventemitters @done(19-06-26 23:48) @project(Other)
+  ✘ remove path options from config, make them hardcoded @cancelled(19-06-26 23:48) @project(Other)
+  ✔ Improve indexing shares @started(18-11-05 23:27) @done(18-11-06 01:10) @lasted(1h43m4s) @project(Discovery)
+  ✘ support for SMB1 @low @cancelled(19-06-13 01:19) @project(Minor features)
+  ✔ better config -> https://www.npmjs.com/package/config @done(19-06-13 01:19) @project(Minor features)
+  ✘ NeDB scheduled compacting db @cancelled(19-06-13 01:19) @project(Minor features)
   ✔ Implement own readdir package, smb2c does not process subsequent QUERY_DIRECTORY packets and smb2 gives only filename @done(18-11-05 23:28) @project(Discovery)
   ✘ automatically get subnet to scan if no subnet is given @cancelled(18-11-05 23:28) @project(Minor features)
   ✔ Have a single queue instance for possible multithreaded discoveries @started(18-11-04 21:38) @done(18-11-05 02:16) @lasted(4h38m49s) @project(Discovery)
