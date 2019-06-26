@@ -89,7 +89,7 @@ async function indexKnownHosts() {
     // update shares list
     let shares = await discovery.listShares(host.ip)
     if(!shares.length) {
-      debug('no shares on', host.hostname)
+      debug('no shares on ' + host.hostname)
       return
     }
 
@@ -106,7 +106,7 @@ async function indexKnownHosts() {
   }
 
   const shareTask = async (host, share) => {
-    debug('starting share task on', host.hostname, share.name)
+    debug('starting share task on ' + host.hostname + ' ' + share.name)
 
     share.removeFiles()
 

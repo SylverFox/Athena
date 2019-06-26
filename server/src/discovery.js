@@ -6,13 +6,19 @@ const smbEnumerateShares = require('smb-enumerate-shares')
 const smbEnumerateFiles = require('smb-enumerate-files')
 const PQueue = require('p-queue')
 const winston = require('winston')
-const {debug} = winston
 
 // custom logger for errors in smb scanning
-const smblogger = new (winston.Logger)({
-  level: 'debug',
+const smblogger = winston.createLogger({
+  level: config.logging.level,
   transports: [
-    new (winston.transports.File)({filename: 'logs/smberrors.log', timestamp: true})
+    new winston.transports.File({
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.json()
+      ),
+      filename: config.logging.location+'/smberrors.log',
+    })
   ]
 })
 
@@ -49,7 +55,7 @@ exports.ping = function(ip, port = 445) {
 exports.reverseLookup = function(ip) {
   const hostname = queue.add(async () => dnsReverse(ip))
     .then(hostnames => hostnames[0])
-    .catch(err => debug(err))
+    .catch(err => winston.debug('reverse lookup error: '+err.message))
   return hostname
 }
 
@@ -61,7 +67,7 @@ exports.listShares = function(ip) {
   const shares = queue.add(async () => smbEnumerateShares({host: ip, timeout: 10000}))
     .then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
     .catch(err => {
-      debug(ip, err.message)
+      smblogger.debug(`list shares failed on ${ip}: ${err.message}`)
       return []
     })
   return shares
@@ -86,18 +92,22 @@ exports.indexHost = async function(host) {
         indexDirectoryRecursive(smbsession, '')
       ).then(result => {
         const fullname = host.hostname+'/'+share.name
-        debug('=====',fullname,'files:',result.index.length,'total size:',result.size)
-        //console.table(result.index)
+        winston.debug(`${fullname} files: ${result.index.length} total size: ${result.size}`)
         return result
       }).catch(err => {
-        debug(host.hostname, share.name, err)
+        winston.debug(`${host.hostname} ${share.name} ${err.message}`)
         return {size: 0, index: []}
       })
       // hook size, filecount and index to the share
       Object.assign(share, result)
       await smbsession.close()
     } catch(err) {
-      smblogger.error(host.hostname, share.name, err.message)
+      smblogger.error('indexing host failed', {
+        hostname: host.hostname,
+        share: share.name,
+        error: err.message,
+        stack: err.stack
+      })
       continue
     }
   }
@@ -112,16 +122,21 @@ exports.indexShare = async function(host, share, indexEmitter) {
     const result = await queue.add(() => indexDirectoryRecursive(smbsession, indexEmitter, ''))
       .then(res => {
         const fullname = host.hostname+'/'+share.name
-        debug('=====',fullname,'files:',res.filecount,'total size:',res.size)
+        winston.debug(`${fullname} files: ${res.filecount} total size: ${res.size}`)
         return res
       }).catch(err => {
-        debug(host.hostname, share.name, err)
+        winston.debug(`${host.hostname} ${share.name} ${err.message}`)
         return {size: 0, filecount: 0}
       })
     Object.assign(share, result)
     await smbsession.close()
   } catch(err) {
-    smblogger.error(host.hostname, share.name, err.message)
+    smblogger.error('indexing share failed', {
+      hostname: host.hostname,
+      share: share.name,
+      error: err.message,
+      stack: err.stack
+    })
   }
   return host
 }
@@ -146,7 +161,12 @@ async function indexDirectoryRecursive(session, emitter, path) {
       path: path
     }))
   } catch(err) {
-    smblogger.error(session.options.host, session.options.share, err.message)
+    smblogger.error('Recursive directory indexing failed', {
+      host: session.options.host,
+      share: session.options.share,
+      error: err.message,
+      stack: err.stack
+    })
   }
 
   for(let file of files) {

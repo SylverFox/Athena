@@ -1,3 +1,7 @@
+/**
+ * Highly experimental streaming provider for SMB content
+ */
+
 const SMB = require('smb2c')
 const {debug, error} = require('winston')
 
@@ -58,7 +62,7 @@ module.exports = function(request, response) {
       })
     })
     .catch(err => {
-      error(err)
+      error(err.message, { stack: err.stack })
       return response.sendStatus(500)
     })
 }

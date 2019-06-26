@@ -14,5 +14,8 @@
   },
   "discovery": {
     "range": "130.89.163.150/32"
+  },
+  "logging": {
+    "level": "debug"
   }
 }
