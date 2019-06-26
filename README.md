@@ -6,20 +6,9 @@ Search engine and indexer for network shares on CampusNet
 
 ### Prerequisites
 
-- [Node](https://nodejs.org), 6.11 or higher
-- [Python](https://www.python.org) and the [pysmb](https://pythonhosted.org/pysmb/) package
+- [Node](https://nodejs.org)
 
-If you have pip on your system, the easiest way to install pysmb is
 
-```
-pip install pysmb
-```
-
-For windows users, Visual C++ components are needed. The easiest way to install these is running the following command **as adminstrator**
-
-```
-npm install -g windows-build-tools
-```
 
 ### Installing
 
@@ -35,14 +24,17 @@ Then move into the project with `cd Athena` and install dependencies
 npm install
 ```
 
-and start the server `[sudo] npm start`
+>For windows users, you might need Visual C++ components if you run into compilation problems. The easiest way to install these is running the following command **as adminstrator**
+>```
+>npm install -g windows-build-tools
+>```
+
+and start the server `npm start`
 
 If you are running the app on production, make sure to set the node environment variable to production before starting
 
 - **linux**: `export NODE_ENV=production`
 - **windows**: `set NODE_ENV=production`
-
-Also take a look at `config.js` for any configuration you might want to change
 
 ## License
 

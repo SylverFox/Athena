@@ -69,7 +69,7 @@ class Search extends Vue {
         }
       })
       .catch(err => {
-        this.toast('Error while searching', err.message, 'error')
+        this.toast('Error while searching', err.message, 'danger')
       })
       .finally(() => {
         this.searching = false
@@ -88,7 +88,7 @@ class Search extends Vue {
           .catch(() => this.toast(
             'Unable to copy URL to clipboard',
             'No permission given to copy to clipboard',
-            'error'
+            'danger'
           ))
       }
     })

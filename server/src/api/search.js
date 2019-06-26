@@ -46,7 +46,7 @@ search.get('/', (req, res, next) => {
         size: r.size,
         isDirectory: r.isDirectory,
         location: path,
-        fullpath: r.isDirectory ? path : path + '\\' + r.filename
+        fullpath: path + r.filename
       }
     })
     res.json(result)
