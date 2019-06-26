@@ -35,6 +35,7 @@
     "smb-enumerate-shares": "^1.1.2",
     "sqlite3": "^4.0.9",
     "tcp-ping": "^0.1.1",
+    "trianglify": "^2.0.0",
     "vue": "^2.6.10",
     "vue-axios": "^2.1.4",
     "vue-router": "^3.0.3",
