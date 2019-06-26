@@ -1,3 +1,6 @@
 module.exports = {
-  outputDir: 'client/dist/'
+  outputDir: 'client/dist/',
+  devServer: {
+    disableHostCheck: false
+  }
 }

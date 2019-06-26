@@ -1,3 +1,6 @@
-db/
-logs/
-node_modules/
+../node_modules
+../client
+db
+*.db
+logs
+*.log

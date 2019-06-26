@@ -2,5 +2,5 @@
 	"script": "server/server.js",
 	"max": 5,
 	"workingDir": "./server/",
-	"watch": true
+  "watch": true
 }
