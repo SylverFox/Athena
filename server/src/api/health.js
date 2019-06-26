@@ -1,6 +1,8 @@
-const stats = require('express').Router()
+const health = require('express').Router()
 const db = require('../models')
 
-stats.get('/', (req, res, next) => {
+health.get('/', (req, res, next) => {
   res.json({status: 'OK'})
 })
+
+module.exports = health

@@ -46,11 +46,12 @@ app.use(IpFilter(config.webserver.allowedHosts, { mode: 'allow', logLevel: 'deny
 // API routes
 app.use('/search', api.search)
 app.use('/stats', api.stats)
+app.use('/health', api.health)
 
 // Error handlers
 app.use((err, req, res, next) => {
   if (err instanceof IpDeniedError) {
-    res.status(401).send({error: 'Not allowed. Request IP not from campusnet' })
+    res.status(403).send({error: 'Not allowed. Request IP not from campusnet' })
   } else {
     winston.error(err)
     res.status(500).send({error: err.message})
