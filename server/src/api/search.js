@@ -37,18 +37,20 @@ search.get('/', (req, res, next) => {
   })
 
   query.then(result => {
-    result = result.map((r, i) => ({
-      id: i,
-      filename: r.filename,
-      size: r.size,
-      isDirectory: r.isDirectory,
-      path: r.path,
-      fullpath: ['\\\\', r.Share.Host.hostname, r.Share.name, r.path, r.filename]
-        .join('\\').replace(/\\\\/g, '\\')
-    }))
-
+    result = result.map((r, i) => {
+      const path = '\\\\' + [r.Share.Host.hostname, r.Share.name, r.path, ''].join('\\')
+        .replace(/\//g, '\\').replace(/\\\\/g, '\\')
+      return {
+        id: i,
+        filename: r.filename,
+        size: r.size,
+        isDirectory: r.isDirectory,
+        location: path,
+        fullpath: r.isDirectory ? path : path + '\\' + r.filename
+      }
+    })
     res.json(result)
-  }).catch(err => next(err))
+  }).catch(() => next(Error('Error while searching'))) // todo: what to do with errors?
 })
 
 module.exports = search

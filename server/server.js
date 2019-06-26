@@ -59,5 +59,7 @@ app.use((err, req, res, next) => {
   next()
 })
 
+
 const port = config.webserver.port
 app.listen(port, () => winston.info(`Webserver running on http://localhost:${port}`))
+  .on('error', err => winston.error('Unable to start webserver', err))
