@@ -15,7 +15,7 @@
       form#searchform(v-on:submit.prevent="search")
         input#search.form-control(
           type='text',
-          v-model.trim='query'
+          v-model.trim='query',
           autocomplete='off',
           placeholder='search athena'
         )

@@ -1,10 +1,6 @@
 <template lang="pug">
-	footer
-		hr
-		.footer-content
-			.footer-links
-				router-link(:to={ name: 'about'}) About
-				router-link(:to={ name: 'stats'}) Stats
+	footer.footer.fixed-bottom
+		| Version {{process.env.npm_package_version}}
 </template>
 
 <script>
@@ -19,11 +15,5 @@ class Footer extends Vue {
 export default Footer
 </script>
 
-<style lang="stylus" scoped>
-footer
-	width 90%
-	margin-top
-	&.content
-		distplay flex
-		justify-content flex-end
+<style lang="stylus">
 </style>
