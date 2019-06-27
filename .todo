@@ -22,6 +22,7 @@ Bugs:
 Other:
   ☐ cleanup dependencies @next-release
   ☐ Change readme @next-release
+  ☐ Add documentation to all major function in server/src @next-release
 
 Archive:
   ✘ query and document caching @cancelled(19-06-26 23:32) @project(Major features)
