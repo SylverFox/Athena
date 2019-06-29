@@ -20,9 +20,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true
   })
 
-  Host.associate = models => {
-    Host.hasMany(models.Share)
-  }
-
   return Host
 }

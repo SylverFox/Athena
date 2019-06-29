@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
   )
 
   File.associate = models => {
-    File.belongsTo(models.Share)
+    File.belongsTo(models.Share, { hooks: true, onDelete: 'CASCADE' })
   }
 
   return File
