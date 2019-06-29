@@ -27,10 +27,10 @@ class Home extends Vue {
   pattern = '../assets/img/bg.png'
 
   created() {
-    // @see https://github.com/qrohlf/trianglify
     const pattern = Trianglify({
       width: screen.width,
-      height: screen.height
+      height: screen.height,
+      seed: (new Date()).toLocaleDateString('nl-nl') // makes the background change daily
     })
     this.pattern = pattern.png()
   }
