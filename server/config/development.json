@@ -13,7 +13,8 @@
     ]
   },
   "discovery": {
-    "range": "130.89.163.150/32"
+    "range": "130.89.163.150/32",
+    "threads": 1
   },
   "logging": {
     "level": "debug"

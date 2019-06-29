@@ -11,11 +11,6 @@
     },
     "threads": 10
   },
-  "scheduling": {
-    "discoverTime": "0 0 * * *",
-    "pingTime": "*/5 * * * *",
-    "indexTime": "0 1 * * *"
-  },
   "database": {
     "location": "./db/"
   },

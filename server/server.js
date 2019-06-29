@@ -6,11 +6,10 @@ const config = require('config')
 const express = require('express')
 const cors = require('cors')
 const responseTime = require('response-time')
-// const schedule = require('node-schedule')
+const Scheduler = require('simple-task-scheduler')
 const {IpFilter, IpDeniedError} = require('express-ipfilter')
 
-// const taskrunner = require('./src/taskrunner')
-// const stream = require('./src/stream')
+const taskrunner = require('./src/taskrunner')
 const api = require('./src/api')
 
 /* INIT WINSTON */
@@ -41,8 +40,12 @@ winston.add(new winston.transports.File({
 
 /** INIT JOB SCHEDULER **/
 
-// schedule.scheduleJob(config.scheduling.pingTime, taskrunner.pingHosts)
-// schedule.scheduleJob(config.scheduling.discoverTime, taskrunner.runFullDiscovery)
+// Run full discovery 1 minute after startup
+Scheduler.doAfter(taskrunner.runFullDiscovery, { minutes: 1})
+// Then run every day at midnight
+Scheduler.doRecurrentCron(taskrunner.runFullDiscovery, '0 0 * * *')
+// Ping all hosts every 5 minutes
+Scheduler.doRecurrent(taskrunner.pingHosts, { minutes: 5 })
 
 /** INIT EXPRESS **/
 
