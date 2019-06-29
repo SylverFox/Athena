@@ -9,8 +9,8 @@
             b-button(type="submit") Search
 
     b-container.resultcontainer.my-3
-      .text-center.mt-5
-        b-spinner(v-show="searching", variant="info")
+      .text-center.mt-5(v-show="searching")
+        b-spinner(variant="info")
       p.text-right.small(v-if="searchstats")
         | Found {{ searchstats.count }} results in {{ intervalToTime(searchstats.time) }}
       b-list-group
@@ -94,6 +94,7 @@ class Search extends Vue {
     })
   }
 
+  // todo move to mixin
   toast(title, msg, variant) {
     this.$bvToast.toast(msg, {
       toaster: 'b-toaster-bottom-right',

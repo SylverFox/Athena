@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Share.associate = models => {
     Share.belongsTo(models.Host, { hooks: true, onDelete: 'CASCADE' })
+    Share.hasMany(models.File)
   }
 
   return Share
