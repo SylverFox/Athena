@@ -1,6 +1,7 @@
 const search = require('express').Router()
 const db = require('../models')
 const Sequelize = require('sequelize')
+const winston = require('winston')
 // const levenshtein = require('fast-levenshtein')
 
 const MAX_RESULTS = 100
@@ -13,9 +14,9 @@ search.get('/', (req, res, next) => {
     next(Error('No search query given'))
   }
 
-  const keywords = req.query.q.split(/[^\d\w]+/g)
-    .map(escape)
+  const keywords = req.query.q.split(/[^A-Za-z0-9]+/)
     .filter(kw => kw.length)
+    .map(escape)
     .map(kw => kw.toLowerCase())
 
   const query = db.File.findAll({
@@ -50,7 +51,10 @@ search.get('/', (req, res, next) => {
       }
     })
     res.json(result)
-  }).catch(() => next(Error('Error while searching'))) // todo: what to do with errors?
+  }).catch(err => {
+    winston.error(err.message, { stack: err.stack })
+    next(Error('Error while searching'))
+  })
 })
 
 module.exports = search

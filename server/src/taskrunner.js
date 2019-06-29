@@ -1,6 +1,6 @@
 const events = require('events')
 const {info, warn, debug, startTimer} = require('winston')
-const PQueue = require('p-queue')
+const {default: PQueue} = require('p-queue')
 const config = require('config')
 const iprange = require('iprange')
 
@@ -87,44 +87,37 @@ async function indexKnownHosts() {
 
   const hostTask = async host => {
     // update shares list
+    db.Share.destroy({ where: { HostId: host.id } })
+
     let shares = await discovery.listShares(host.ip)
-    if(!shares.length) {
-      debug('no shares on ' + host.hostname)
-      return
-    }
+    shares = shares.map(s => ({ name: s, HostId: host.id }))
 
     // find or create in DB
-    let newshares = []
-    for(let share of shares) {
-      const [newshare] = await db.Share.findOrCreate({
-        where: { name: share, HostId: host.id }
-      })
-      newshares.push(newshare)
-    }
+    const newshares = await db.Share.bulkCreate(shares)
 
     await Promise.all(newshares.map(share => shareTask(host, share)))
   }
 
   const shareTask = async (host, share) => {
-    debug('starting share task on ' + host.hostname + ' ' + share.name)
+    debug(`starting share task on ${host.hostname}/${share.name}`)
 
-    share.removeFiles()
+    db.File.destroy({ where: { ShareId: share.id } })
 
     // create a new event emitter to process data in batches
     const indexEmitter = new events.EventEmitter()
     let size = 0, filecount = 0
-    indexEmitter.on('data', indexedFiles => {
+    indexEmitter.on('data', async indexedFiles => {
       const files = indexedFiles.filter(f => !f.isDirectory)
       size += files.reduce((a,b) => a + b.size, 0)
       filecount += files.length
 
       // append share id
-      indexedFiles = indexedFiles.map(f => {
+      for(let f of indexedFiles) {
         f.ShareId = share.id
-        return f
-      })
+      }
+
       // insert into database
-      db.File.bulkCreate(indexedFiles)
+      await db.File.bulkCreate(indexedFiles)
     })
     // start indexing and wait for completion
     await discovery.indexShare(host, share, indexEmitter)
@@ -146,10 +139,32 @@ async function indexKnownHosts() {
  * Does post processing on indexed hosts, such as building keyword indexes
  */
 async function postProcessing() {
+  // build keyword index
+  await db.Keyword.truncate()
+  const files = await db.File.findAll()
+  
+  let keywords = {}
+  for(let file of files) {
+    const kws = file.filename.split(/[-+_. ]+/)
+    for(let kw of kws) {
+      if(!kw.length) {
+        continue
+      }
 
-  // return processing.buildFileIndex()
-  // 	.then(processing.buildDirectoryIndex)
-  // 	.then(processing.buildKeywordIndex)
+      if(keywords[kw]) {
+        keywords[kw]++
+      } else {
+        keywords[kw] = 1
+      }
+    }
+  }
+
+  keywords = Object.keys(keywords).map(kw => ({
+    keyword: kw,
+    count: keywords[kw]
+  }))
+
+  db.Keyword.bulkCreate(keywords)
 }
 
 /** PUBLIC FUNCTIONS **/
@@ -161,8 +176,8 @@ exports.pingHosts = function() {
   info('Ping hosts: started')
   const timer = startTimer()
   queue.add(pingKnownHosts)
-    .then(() => timer.done('Ping hosts: completed'))
-    .catch(err => warn('Ping hosts: failed', err.message))
+    .then(() => timer.done({ message: 'Ping hosts: completed' }))
+    .catch(err => warn(`Ping hosts: failed -> ${err.message}`))
 }
 
 /**
@@ -176,6 +191,6 @@ exports.runFullDiscovery = function() {
     discoverNewHosts,
     indexKnownHosts,
     postProcessing
-  ]).then(() => timer.done('Full discovery: completed'))
-    .catch(err => warn('Full discovery: failed', err))
+  ]).then(() => timer.done({ message: 'Full discovery: completed' }))
+    .catch(err => warn(`Full discovery: failed -> ${err.message}`))
 }

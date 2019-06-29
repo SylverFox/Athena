@@ -4,7 +4,7 @@ const config = require('config')
 const tcpping = require('tcp-ping')
 const smbEnumerateShares = require('smb-enumerate-shares')
 const smbEnumerateFiles = require('smb-enumerate-files')
-const PQueue = require('p-queue')
+const {default: PQueue} = require('p-queue')
 const winston = require('winston')
 
 // custom logger for errors in smb scanning
