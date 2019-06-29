@@ -41,7 +41,7 @@ winston.add(new winston.transports.File({
 /** INIT JOB SCHEDULER **/
 
 // Run full discovery 1 minute after startup
-Scheduler.doAfter(taskrunner.runFullDiscovery, { minutes: 1})
+// Scheduler.doAfter(taskrunner.runFullDiscovery, { minutes: 1})
 // Then run every day at midnight
 Scheduler.doRecurrentCron(taskrunner.runFullDiscovery, '0 0 * * *')
 // Ping all hosts every 5 minutes

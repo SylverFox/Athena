@@ -7,9 +7,26 @@
 
     b-container
       h2 Servers
-      b-table(striped :items="hostitems" :fields="hostfields")
-      .text-center.mt-5(v-show="loadingHosts")
-        b-spinner(variant="info")
+      b-table(
+        striped,
+        hover,
+        per-page="25",
+        :items="hostitems",
+        :fields="hostfields",
+        :busy="loadingHosts",
+        @row-clicked="rowClicked"
+      )
+        template(slot="status", slot-scope="data")
+          b-badge(:variant="data.value ? 'success' : 'danger'")
+            | {{ data.value ? 'online' : 'offline'}}
+        template(slot="row-details", slot-scope="row")
+          b-card
+            b-row
+              b-col Col 1
+              b-col Col 2
+              b-col Col 3
+        .text-center.my-2(slot="table-busy")
+          b-spinner(variant="info")
 </template>
 
 <script>
@@ -27,7 +44,7 @@ class Stats extends Vue {
   serverstats = {}
   hostitems = []
   hostfields = [
-    { key: 'online' },
+    { key: 'status' },
     { key: 'hostname', sortable: true },
     { key: 'total_size', sortable: true },
     { key: 'last_seen', sortable: true }
@@ -46,11 +63,16 @@ class Stats extends Vue {
 
   parseHosts(hostsdata) {
     this.hostitems = hostsdata.map(host => ({
-      online: new Date() - new Date(host.lastseen) < 5 * 60 * 1000,
+      status: new Date() - new Date(host.lastseen) < 5 * 60 * 1000,
       hostname: host.hostname.split('.student.utwente.nl')[0],
       total_size: this.bytesToSize(host.Shares.reduce((a,b) => a + b.size, 0)),
-      last_seen: this.timestampToLastseen(host.lastseen)
+      last_seen: this.timestampToLastseen(host.lastseen),
+      _showDetails: false
     }))
+  }
+
+  rowClicked(record) {
+    record._showDetails = !record._showDetails
   }
 
   // todo move to mixin
