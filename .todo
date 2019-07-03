@@ -1,30 +1,32 @@
 Discovery:
-  ☐ Investigate possible problems with object sizes when indexing shares @low 
   ☐ Recheck documentation @next-release
 
 Major features:
-  ☐ JSON API @low 
   ☐ FTP indexing -> npm install --save ftp
 
 Minor features:
-  ☐ schedule task on first startup (populate database on first run)
   ☐ favicon
-  ☐ statistics page, look at https://d3js.org
-  ☐ about page
+  ☐ statistics page, look at https://chartkick.com/vue
   ☐ API documentation
   ☐ custom error pages
-  ☐ Check out Helmet
+  ☐ History statistics per host and for the server
 
 Bugs:
-  ☐ smb2 does not list complete folder contents
-  ☐ Some errors occur on smb-enumerate-shares
+  ☐ Investigate smb errors
 
 Other:
-  ☐ cleanup dependencies @next-release
   ☐ Change readme @next-release
   ☐ Add documentation to all major function in server/src @next-release
 
 Archive:
+  ✔ Check out Helmet @done(19-07-03 19:07) @project(Minor features)
+  ✔ Investigate possible problems with object sizes when indexing shares @low @done(19-07-03 10:22) @project(Discovery)
+  ✔ JSON API @low @done(19-07-03 10:22) @project(Major features)
+  ✔ schedule task on first startup (populate database on first run) @done(19-07-03 10:20) @project(Minor features)
+  ✔ about page @done(19-07-03 10:20) @project(Minor features)
+  ✔ smb2 does not list complete folder contents @done(19-07-03 10:21) @project(Bugs)
+  ✔ Some errors occur on smb-enumerate-shares @done(19-07-03 10:21) @project(Bugs)
+  ✔ cleanup dependencies @next-release @done(19-07-03 10:21) @project(Other)
   ✘ query and document caching @cancelled(19-06-26 23:32) @project(Major features)
   ✔ create url handler @done(19-06-26 23:32) @project(Major features)
   ✔ script to detect url handler @done(19-06-26 23:32) @project(Major features)

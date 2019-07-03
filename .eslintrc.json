@@ -34,7 +34,7 @@
         "max-len": [
 			2,
 			{
-				"code": 100,
+				"code": 120,
 				"tabWidth": 2,
 				"ignoreTrailingComments": true
 			}

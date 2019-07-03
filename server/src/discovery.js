@@ -34,7 +34,7 @@ const queue = new PQueue({concurrency: config.discovery.threads})
  * @param {string} ip
  * @param {number} port
  */
-exports.ping = function(ip, port = 445) {
+exports.ping = async function(ip, port = 445) {
   const online = queue.add(() => pingHost(ip, port))
     .then(res => res)
     .catch(() => false)
@@ -46,7 +46,7 @@ exports.ping = function(ip, port = 445) {
  * Does a reverse lookup on the specified host.
  * @param {string} ip
  */
-exports.reverseLookup = function(ip) {
+exports.reverseLookup = async function(ip) {
   const hostname = queue.add(() => dnsReverse(ip))
     .then(hostnames => hostnames[0])
     .catch(err => winston.debug('reverse lookup error: '+err.message))
@@ -57,7 +57,7 @@ exports.reverseLookup = function(ip) {
  * Lists the SMB shares of a host.
  * @param {object} ip
  */
-exports.listShares = function(ip) {
+exports.listShares = async function(ip) {
   const shares = queue.add(() => smbEnumerateShares({host: ip, timeout: 10000}))
     .then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
     .catch(err => {
@@ -155,12 +155,20 @@ async function indexDirectoryRecursive(session, emitter, path) {
       path: path
     }))
   } catch(err) {
-    smblogger.error('Recursive directory indexing failed', {
-      host: session.options.host,
-      share: session.options.share,
-      error: err.message,
-      stack: err.stack
-    })
+    if (err.message === 'STATUS_ACCESS_DENIED') {
+      smblogger.warn(
+        `Indexing ${session.options.host}/${session.options.share}/${path} failed: ${err.message}`
+      )
+    } else {
+      // This error might be worth investigating, log it as error
+      smblogger.error('Recursive directory indexing failed', {
+        host: session.options.host,
+        share: session.options.share,
+        path: path,
+        error: err.message,
+        stack: err.stack
+      })
+    }
   }
 
   for(let file of files) {
