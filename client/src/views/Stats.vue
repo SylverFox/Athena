@@ -16,15 +16,19 @@
         :busy="loadingHosts",
         @row-clicked="rowClicked"
       )
-        template(slot="status", slot-scope="data")
+        template(slot-scope="data", slot="status")
           b-badge(:variant="data.value ? 'success' : 'danger'")
             | {{ data.value ? 'online' : 'offline'}}
-        template(slot="row-details", slot-scope="row")
-          b-card
-            b-row
-              b-col Col 1
-              b-col Col 2
-              b-col Col 3
+        template(slot-scope="data", slot="total_size") {{ bytesToSize(data.value) }}
+        template(slot-scope="data", slot="last_seen") {{ timestampToLastseen(data.value) }}
+        template(slot-scope="row", slot="row-details")
+          b-card(no-body)
+            b-tabs(card, align="center")
+              b-tab(title="Amount of files", active)
+                b-card-text Files graph over time
+                line-chart(:data="{'2017-05-13': 2, '2017-05-14': 5}")
+              b-tab(title="Total size")
+                b-card-text Total size over time
         .text-center.my-2(slot="table-busy")
           b-spinner(variant="info")
 </template>
@@ -46,6 +50,7 @@ class Stats extends Vue {
   hostfields = [
     { key: 'status' },
     { key: 'hostname', sortable: true },
+    { key: 'files', sortable: true },
     { key: 'total_size', sortable: true },
     { key: 'last_seen', sortable: true }
   ]
@@ -71,8 +76,9 @@ class Stats extends Vue {
     this.hostitems = hostsdata.map(host => ({
       status: new Date() - new Date(host.lastseen) < 5 * 60 * 1000,
       hostname: host.hostname.split('.student.utwente.nl')[0],
-      total_size: this.bytesToSize(host.Shares.reduce((a, b) => a + b.size, 0)),
-      last_seen: this.timestampToLastseen(host.lastseen),
+      files: host.Shares.reduce((a, b) => a + b.filecount, 0),
+      total_size: host.Shares.reduce((a, b) => a + b.size, 0),
+      last_seen: host.lastseen,
       _showDetails: false
     }))
   }

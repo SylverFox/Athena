@@ -22,8 +22,8 @@ search.get('/', (req, res, next) => {
   const query = db.File.findAll({
     attributes: ['filename', 'path', 'size', 'isDirectory'],
     where: {
-      [Sequelize.Op.or]: keywords.map(kw => 
-        ({ filename: { [Sequelize.Op.substring]: kw } })	
+      [Sequelize.Op.and]: keywords.map(kw => 
+        ({ filename: { [Sequelize.Op.substring]: kw } })
       )
     },
     limit: MAX_RESULTS,

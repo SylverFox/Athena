@@ -32,7 +32,7 @@ const task = async (host, share) => {
   // update share information
   share.set('size', size)
   share.set('filecount', filecount)
-  share.save()
+  await share.save()
 }
 
 /**
@@ -50,7 +50,13 @@ module.exports = async function indexKnownHosts() {
   })
 
   await Promise.all(hosts.map(async host => {
-    await Promise.all(host.Shares.map(share => task(host, share)))
+    let size = 0, files = 0
+    await Promise.all(host.Shares.map(async share => {
+      await task(host, share)
+      size += share.size
+      files += share.filecount
+    }))
+    await db.HostHistory.create({ size, files, HostId: host.id })
   }))
   await db.Scan.create({
     task: 'indexKnownHosts',

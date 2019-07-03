@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Host.associate = models => {
     Host.hasMany(models.Share)
+    Host.hasMany(models.HostHistory)
   }
   return Host
 }

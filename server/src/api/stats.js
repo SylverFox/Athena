@@ -18,10 +18,25 @@ stats.get('/', (req, res, next) =>
  */
 stats.get('/hosts', (req, res, next) => {
   db.Host.findAll({
-    attributes: ['hostname', 'lastseen'],
+    attributes: ['id', 'hostname', 'lastseen'],
     include: [{
       model: db.Share,
       attributes: ['name', 'filecount', 'size']
+    }]
+  }).then(result => res.json(result))
+    .catch(err => next(err))
+})
+
+/**
+ * Retrieve single host statistics
+ */
+stats.get('/hosts/:id', (req, res, next) => {
+  db.Host.findOne({
+    where: { id: req.params.id },
+    attributes: ['id'],
+    include: [{
+      model: db.HostHistory,
+      attributes: ['files', 'size', 'date']
     }]
   }).then(result => res.json(result))
     .catch(err => next(err))
