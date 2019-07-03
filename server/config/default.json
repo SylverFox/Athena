@@ -5,10 +5,6 @@
   },
   "discovery": {
     "range": "130.89.166.0/24",
-    "ping": {
-      "timeout": 100,
-      "attempts": 1
-    },
     "threads": 10
   },
   "database": {

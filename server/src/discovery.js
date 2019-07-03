@@ -22,8 +22,8 @@ const smblogger = winston.createLogger({
   ]
 })
 
-// promisified version of the tcp ping function
-const pingHost = util.promisify(tcpping.ping)
+// promisified version of the tcp probe function
+const pingHost = util.promisify(tcpping.probe)
 // promisified version of dns.reverse
 const dnsReverse = util.promisify(dns.reverse)
 // throttled promise queue to limit network connections
@@ -35,14 +35,8 @@ const queue = new PQueue({concurrency: config.discovery.threads})
  * @param {number} port
  */
 exports.ping = function(ip, port = 445) {
-  const options = {
-    address: ip,
-    port: port,
-    timeout: config.discovery.ping.timeout,
-    attempts: config.discovery.ping.attempts		
-  }
-  const online = queue.add(async () => pingHost(options))
-    .then(res => res.min !== undefined)
+  const online = queue.add(() => pingHost(ip, port))
+    .then(res => res)
     .catch(() => false)
 	
   return online
@@ -53,7 +47,7 @@ exports.ping = function(ip, port = 445) {
  * @param {string} ip
  */
 exports.reverseLookup = function(ip) {
-  const hostname = queue.add(async () => dnsReverse(ip))
+  const hostname = queue.add(() => dnsReverse(ip))
     .then(hostnames => hostnames[0])
     .catch(err => winston.debug('reverse lookup error: '+err.message))
   return hostname
@@ -64,7 +58,7 @@ exports.reverseLookup = function(ip) {
  * @param {object} ip
  */
 exports.listShares = function(ip) {
-  const shares = queue.add(async () => smbEnumerateShares({host: ip, timeout: 10000}))
+  const shares = queue.add(() => smbEnumerateShares({host: ip, timeout: 10000}))
     .then(shares => shares.filter(s => !s.name.endsWith('$')).map(s => s.name))
     .catch(err => {
       smblogger.debug(`list shares failed on ${ip}: ${err.message}`)
