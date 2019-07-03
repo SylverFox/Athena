@@ -30,7 +30,7 @@ stats.get('/hosts', (req, res, next) => {
 /**
  * Retrieve single host statistics
  */
-stats.get('/hosts/:id', (req, res, next) => {
+stats.get('/host/:id', (req, res, next) => {
   db.Host.findOne({
     where: { id: req.params.id },
     attributes: ['id'],
