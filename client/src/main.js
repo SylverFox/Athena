@@ -7,6 +7,9 @@ import VueAxios from 'vue-axios'
 import BootstrapVue from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
+import Chartkick from 'vue-chartkick'
+import Chart from 'chart.js'
+
 
 Vue.config.productionTip = false
 
@@ -14,6 +17,7 @@ axios.defaults.baseURL = 'http://' + window.location.hostname + ':8000/'
 
 Vue.use(VueAxios, axios)
 Vue.use(BootstrapVue)
+Vue.use(Chartkick.use(Chart))
 
 let redirect
 axios.get('health')

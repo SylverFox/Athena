@@ -8,6 +8,7 @@ const cors = require('cors')
 const responseTime = require('response-time')
 const Scheduler = require('simple-task-scheduler')
 const {IpFilter, IpDeniedError} = require('express-ipfilter')
+const helmet = require('helmet')
 
 const taskrunner = require('./src/taskrunner')
 const api = require('./src/api')
@@ -41,7 +42,8 @@ winston.add(new winston.transports.File({
 /** INIT JOB SCHEDULER **/
 
 // Run full discovery 1 minute after startup
-// Scheduler.doAfter(taskrunner.runFullDiscovery, { minutes: 1})
+// Scheduler.doAfter(taskrunner.runFullDiscovery, { seconds: 10 })
+// Scheduler.doAfter(taskrunner.pingHosts, { seconds: 10})
 // Then run every day at midnight
 Scheduler.doRecurrentCron(taskrunner.runFullDiscovery, '0 0 * * *')
 // Ping all hosts every 5 minutes
@@ -51,6 +53,7 @@ Scheduler.doRecurrent(taskrunner.pingHosts, { minutes: 5 })
 
 const app = express()
 
+app.use(helmet())
 app.use(express.static('public'))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true })) 
