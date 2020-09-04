@@ -14,7 +14,7 @@
     "ip-range-check": "0.0.2",
     "iprange": "^0.1.0",
     "kue-scheduler": "^0.7.3",
-    "mongodb": "^2.2.30",
+    "mongodb": "^3.6.1",
     "monk": "^6.0.1",
     "net-ping": "^1.2.0",
     "node-schedule": "^1.2.3",
